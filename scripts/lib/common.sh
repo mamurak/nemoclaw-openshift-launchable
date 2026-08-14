@@ -27,6 +27,3 @@ require_var() {
 require_cmd() {
   command -v "$1" >/dev/null 2>&1 || die "Required command '$1' not found in PATH."
 }
-
-# Path where MINC's kubeconfig is written for the rest of the phases to use.
-kubeconfig_path() { echo "${REPO_ROOT}/kubeconfig"; }

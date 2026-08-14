@@ -1,10 +1,7 @@
 # OpenClaw workshop lab shell — sourced by the in-browser terminal (server.mjs).
-export KUBECONFIG="${KUBECONFIG:-$LAB_CWD/kubeconfig}"
-# /usr/local/bin (oc) + /usr/bin (openshell CLI, installed by phase 70).
+# In-cluster: oc/kubectl auto-detect the ServiceAccount token. For local dev,
+# set KUBECONFIG before starting the server.
 export PATH="$PATH:/usr/local/bin:/usr/bin"
-
-# Load .env (for OPENCLAW_GATEWAY_PASSWORD, etc.) if present.
-[ -f "$LAB_CWD/.env" ] && { set -a; . "$LAB_CWD/.env" 2>/dev/null; set +a; }
 
 # `sbox-openclaw ...` is a LAB-SHELL HELPER (not the real binary — there's no openclaw on
 # this host). It runs the OpenClaw CLI INSIDE your agent's sandbox via the OpenShell gateway
@@ -22,15 +19,14 @@ sbox-openclaw() {
   openshell sandbox exec -n "${OPENCLAW_AGENT:-shifty}" -- openclaw "$@" "${extra[@]}"
 }
 
-# expose-agent <sandbox> [port=8000] — publish a sandbox's HTTP endpoint at a host port so
-# you can demo your copilot via the Brev URL. A gateway sandbox is network-isolated by its
-# supervisor (the agent's port lives in a private netns), so a plain NodePort can't reach it
-# — we use OpenShell's own `forward`, which bridges the port through the gateway+supervisor.
+# expose-agent <sandbox> [port=8000] — publish a sandbox's HTTP endpoint so you can reach it.
+# The primary agent's Control UI is already available at the openclaw-ui Route. This helper
+# is useful for additional fleet agents that are NOT automatically forwarded.
 expose-agent() {
   local sb="${1:?usage: expose-agent <sandbox> [port=8000]}" port="${2:-8000}"
   openshell forward stop >/dev/null 2>&1
   if openshell forward start "0.0.0.0:$port" "$sb" --background >/dev/null 2>&1; then
-    echo "✓ forwarding host :$port → $sb — open host port $port on your Brev instance to demo it"
+    echo "✓ forwarding :$port → $sb"
     echo "  (stop with: openshell forward stop)"
   else
     echo "✗ forward failed — is $sb Running and serving HTTP on :$port?"

@@ -4,13 +4,13 @@ This page reads your **live gateway** — the same fleet `openshell sandbox list
 
 ## What you're looking at
 
-- **OpenShell gateway** — green/Connected means the control plane is up (and its version). This is the gateway behind `127.0.0.1:30808`.
+- **OpenShell gateway** — green/Connected means the control plane is up (and its version). This is the gateway at the OpenShell Route URL.
 - **Sandboxes** — every agent the gateway is managing, by name, with its phase, readiness, restart count, and age. Your `shifty` agent shows up here once you've built it; create more in Part VI and they appear too.
 - **Click any sandbox** to open its detail: a live **Logs / audit** feed (`openshell logs <name>`, filterable by `gateway` / `sandbox` source — this is where egress allow/deny decisions and the JWT handshake show up) and its **full Policy** YAML (`openshell policy get <name> --full` — filesystem, process, and the per-binary network rules). The same pieces the OpenShell console surfaces, stitched into this page.
 
 ## Where the data comes from
 
-The workshop server runs on the instance, so it reads the cluster directly — no extra component, no OpenShell UI to deploy:
+The workshop server runs in the cluster, so it reads the cluster directly — no extra component, no OpenShell UI to deploy:
 
 ```bash
 oc -n openshell get sandboxes.agents.x-k8s.io -o json

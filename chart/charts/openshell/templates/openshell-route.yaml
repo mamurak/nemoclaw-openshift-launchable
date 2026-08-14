@@ -1,0 +1,23 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: openshell-gateway
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: openshell
+  annotations:
+    haproxy.router.openshift.io/timeout: "300s"
+    haproxy.router.openshift.io/enable-http2: "true"
+spec:
+  {{- if .Values.global.clusterAppsDomain }}
+  host: openshell-{{ .Release.Namespace }}.{{ .Values.global.clusterAppsDomain }}
+  {{- end }}
+  to:
+    kind: Service
+    name: openshell
+    weight: 100
+  port:
+    targetPort: 8080
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect

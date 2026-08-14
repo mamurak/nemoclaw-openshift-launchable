@@ -4,21 +4,19 @@ The workshop stack is a stack of stacks. From the bottom up, each layer hands a 
 
 ## Reading the stack
 
-1. **NVIDIA Brev** — a plain Ubuntu CPU VM (no GPU). Just a Linux box.
-2. **podman** — runs containers; we run a whole Kubernetes control plane *as a container*.
-3. **MicroShift** — Red Hat's single-node OpenShift, packaged to run inside that container (the “MINC” build). Real OpenShift APIs + `oc`, no bare metal.
-4. **OpenShell** (NVIDIA) — the sandbox control plane; gateway-created agents become isolated, policy-bound pods. Reached from the VM via a host-forwarded NodePort (`:30808`).
-5. **OpenClaw** — the agent (“Shifty 🦞”) *you create* on the gateway, running in a sealed sandbox with a web control UI.
-6. **Remote inference** — the agent calls an OpenAI-compatible model endpoint for its thinking.
+1. **OpenShift** — Red Hat's enterprise Kubernetes. Real OpenShift APIs + `oc`, Routes, SecurityContextConstraints, and the web console.
+2. **OpenShell** (NVIDIA) — the sandbox control plane; gateway-created agents become isolated, policy-bound pods. Reached via an OpenShift Route or the in-cluster Service.
+3. **OpenClaw** — the agent ("Shifty 🦞") *you create* on the gateway, running in a sealed sandbox with a web control UI.
+4. **Remote inference** — the agent calls an OpenAI-compatible model endpoint for its thinking.
 
 <Callout type="note" title="Pre-built vs. hands-on">
-Layers 1–4 (everything up to and including the OpenShell gateway) are <strong>pre-provisioned</strong> on your instance — Part II shows how, and Part III has you drive it. Layer 5, the <strong>agent itself</strong>, is what <em>you</em> build by hand in Part IV.
+Layers 1–2 (the cluster and the OpenShell gateway) are <strong>pre-provisioned</strong> — Part II shows how, and Part III has you drive it. Layer 3, the <strong>agent itself</strong>, is what <em>you</em> build by hand in Part IV.
 </Callout>
 
 <Callout type="rh" title="Why a real cluster?">
 Running the agent <em>on OpenShift</em> means it inherits enterprise guardrails for free: namespaces, RBAC, security context constraints, network policy, resource limits. The agent lives in a box you control.
 </Callout>
 
-## Two “gateways” (don't mix them up)
+## Two "gateways" (don't mix them up)
 - **OpenShell gateway** (:8080) — the *sandbox control plane* (platform).
-- **OpenClaw gateway** (:30789) — the agent's own *control UI* you open in a browser.
+- **OpenClaw gateway** (:30789) — the agent's own *control UI*, running inside the sandbox.

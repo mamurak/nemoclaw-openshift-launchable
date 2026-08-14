@@ -1,0 +1,98 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: workshop
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: workshop
+spec:
+  replicas: {{ .Values.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: workshop
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: workshop
+    spec:
+      serviceAccountName: workshop
+      containers:
+        - name: workshop
+          image: {{ .Values.image }}
+          ports:
+            - containerPort: 3000
+              name: http
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: PORT
+              value: "3000"
+            - name: HOST
+              value: "0.0.0.0"
+            - name: LAB_CWD
+              value: /app
+            - name: OPENSHELL_GATEWAY_ENDPOINT
+              value: {{ .Values.openshellGateway.endpointUrl | replace "http://" "" | replace "https://" "" | quote }}
+            - name: OPENSHELL_GATEWAY_ENDPOINT_URL
+              value: {{ .Values.openshellGateway.endpointUrl | quote }}
+            - name: GRAFANA_ORIGIN
+              value: {{ .Values.grafana.origin | quote }}
+            - name: OPENCLAW_GATEWAY_PASSWORD
+              value: {{ .Values.openclaw.gatewayPassword | quote }}
+            - name: OPENCLAW_AGENT_NAME
+              value: {{ .Values.openclaw.agentName | quote }}
+            - name: DEMO_APP_MANIFESTS
+              value: /app/manifests/demo-app
+            {{- if .Values.global.clusterAppsDomain }}
+            - name: NEXT_PUBLIC_CLUSTER_APPS_DOMAIN
+              value: {{ .Values.global.clusterAppsDomain | quote }}
+            {{- end }}
+            {{- if .Values.inference.baseUrl }}
+            - name: NEMOCLAW_INFERENCE_BASE_URL
+              value: {{ .Values.inference.baseUrl | quote }}
+            {{- end }}
+            {{- if .Values.inference.model }}
+            - name: NEMOCLAW_MODEL
+              value: {{ .Values.inference.model | quote }}
+            {{- end }}
+            {{- if .Values.inference.apiKey }}
+            - name: NEMOCLAW_API_KEY
+              value: {{ .Values.inference.apiKey | quote }}
+            {{- end }}
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          resources:
+            requests: { cpu: 200m, memory: 512Mi }
+            limits: { memory: 1Gi }
+        - name: openclaw-forward
+          image: {{ .Values.image }}
+          command: ["bash", "-c"]
+          args:
+            - |
+              GW_URL="${OPENSHELL_GATEWAY_ENDPOINT_URL:-http://openshell.openshell.svc.cluster.local:8080}"
+              openshell gateway add "$GW_URL" --local --name cluster 2>/dev/null || true
+              openshell gateway select cluster 2>/dev/null || true
+              while true; do
+                openshell forward start 0.0.0.0:8789 "${OPENCLAW_AGENT_NAME:-shifty}" 2>&1 || sleep 10
+              done
+          ports:
+            - containerPort: 8789
+              name: openclaw-ui
+          env:
+            - name: OPENSHELL_GATEWAY_ENDPOINT_URL
+              value: {{ .Values.openshellGateway.endpointUrl | quote }}
+            - name: OPENCLAW_AGENT_NAME
+              value: {{ .Values.openclaw.agentName | quote }}
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { memory: 256Mi }

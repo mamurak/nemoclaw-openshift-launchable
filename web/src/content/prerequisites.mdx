@@ -2,18 +2,17 @@ This workshop is deliberately light on prerequisites.
 
 ## You bring
 - A laptop with a modern browser.
-- An SSH client (built into macOS/Linux; Windows: OpenSSH or WSL) — optional, the website's shell covers most of it.
+- Access to an **OpenShift cluster** with the Helm chart already deployed (we provide this at the event).
 - Basic terminal comfort. No Kubernetes experience required.
 
-## We provide — your Brev credits 🎟️
-**NVIDIA Brev** hosts your instance. At the event we hand out **free Brev credits** — enough for the whole session. You redeem a coupon; no credit card, no personal cloud account.
+## We provide
+At the event we hand out access to a pre-configured OpenShift cluster with the OpenShell gateway already running. No personal cloud account or credit card needed.
 
-<Callout type="tip" title="Credits cover everything">
-The instance is a small CPU VM (no GPU), so it's inexpensive. Just <strong>stop your instance</strong> when you're done so you don't burn credits idling.
+<Callout type="tip" title="Everything is pre-deployed">
+The cluster, the gateway, and this workshop site are all running. You just need a browser to get started.
 </Callout>
 
 ## You do NOT need
-- ❌ A GPU — inference is a remote endpoint.
-- ❌ A local Kubernetes/OpenShift install — it runs on the VM.
-- ❌ A Red Hat subscription — we use the open-source OKD build of MicroShift.
-- ❌ Deep YAML knowledge — the deploy is one command.
+- A GPU — inference is a remote endpoint.
+- A local Kubernetes/OpenShift install — it runs on the cluster.
+- Deep YAML knowledge — the deploy is one Helm chart.

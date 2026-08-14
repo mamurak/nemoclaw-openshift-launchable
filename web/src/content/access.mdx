@@ -6,41 +6,35 @@ grep OPENCLAW_GATEWAY_PASSWORD ~/nemoclaw-openshift-launchable/.env
 ```
 </Callout>
 
-Your agent's Control UI is running on port `30789` — but **inside the sealed sandbox's private network namespace**. A NodePort can't reach it (that's the same isolation that protects the agent). The one thing that bridges into a sandbox is the gateway's own port-forward: `openshell forward`.
+Your agent's Control UI is running on port `30789` — but **inside the sealed sandbox's private network namespace**. The sandbox is network-sealed, so only `openshell forward` (which tunnels *through* the gateway + supervisor) can bridge into it.
 
-## Expose the UI to the host
+## Expose the UI
 
-Point `openshell forward` at your sandbox + the UI port, binding `0.0.0.0` so a Brev tunnel can reach it:
+Point `openshell forward` at your sandbox + the UI port:
 
 ```bash
 openshell forward start 0.0.0.0:30789 shifty --background
 openshell forward list
 ```
 
-Confirm it's serving on the host:
+Confirm it's serving:
 
 ```bash
 curl -s -o /dev/null -w "OpenClaw UI: HTTP %{http_code}\n" http://127.0.0.1:30789/
 ```
 
-`HTTP 200` means the bridge is live: host `:30789` → gateway → supervisor → the agent's UI.
+`HTTP 200` means the bridge is live: `openshell forward` → gateway → supervisor → the agent's UI.
 
-<Callout type="note" title="Why not a NodePort like the gateway?">
-The OpenShell <em>gateway</em> is a normal Service, so a NodePort fronts it. A <em>sandbox</em> is network-sealed — its listening port lives in a private namespace, so only <code>openshell forward</code> (which tunnels <em>through</em> the gateway + supervisor) can reach it. Stop it later with <code>openshell forward stop</code>; one forward per port.
+<Callout type="note" title="Why not a Route like the gateway?">
+The OpenShell <em>gateway</em> is a normal Service with an OpenShift Route. A <em>sandbox</em> is network-sealed — its listening port lives in a private namespace, so only <code>openshell forward</code> (which tunnels <em>through</em> the gateway + supervisor) can reach it. Stop it later with <code>openshell forward stop</code>; one forward per port.
 </Callout>
 
 ## Open it in your browser
 
-<ServiceLink service="openclaw">Open the OpenClaw UI</ServiceLink> — log in with the gateway password from the banner above (`openshell-wad26` by default).
-
-Your **instance ID** is usually auto-detected from this page's URL, so the link just works. If it ever asks, the ID is the suffix in your instance's Shareable URLs, e.g. `openclaw-`**`1ut2jitd`**`.brevlab.com` — paste it once and it's remembered, and the **Links** menu (top-right) lights up for every service.
+<ServiceLink service="openclaw">Open the OpenClaw UI</ServiceLink> — log in with the gateway password from the banner above (`openshell-wad26` by default). The Control UI is also available at its OpenShift Route URL.
 
 ## Also: the OpenShift console (optional)
 
-<ServiceLink service="openshift">Open the OpenShift console</ServiceLink> (if the console phase ran).
-
-<Callout type="note" title="Console shows ‘no resources’?">
-Expected — MicroShift lacks the OpenShift <code>project.openshift.io</code> API the console scopes to. Switch the <strong>Project dropdown to “All Projects”</strong>, or browse <code>/console/k8s/all-namespaces/pods</code>.
-</Callout>
+<ServiceLink service="console">Open the OpenShift console</ServiceLink> — browse your cluster's namespaces, pods, and events.
 
 Next: the first browser connection asks for **device pairing** — approve it.

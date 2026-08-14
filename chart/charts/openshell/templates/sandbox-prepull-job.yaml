@@ -1,0 +1,22 @@
+{{- if .Values.sandboxPrepull.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: sandbox-image-prepull
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-delete-policy: before-hook-creation
+spec:
+  backoffLimit: 2
+  ttlSecondsAfterFinished: 600
+  template:
+    spec:
+      serviceAccountName: openshell-sandbox
+      restartPolicy: Never
+      containers:
+        - name: prepull
+          image: {{ .Values.upstream.server.sandboxImage }}
+          imagePullPolicy: IfNotPresent
+          command: ["sh", "-c", "exit 0"]
+{{- end }}

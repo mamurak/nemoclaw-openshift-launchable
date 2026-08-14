@@ -65,7 +65,7 @@ openshell sandbox exec -n shifty -- sh -c \
 There <em>is</em> an <code>openclaw gateway restart</code>, but it manages an <strong>installed OS service</strong> (systemd/launchd) — this sandbox is a minimal container with no init system, so we run the gateway in the foreground ourselves. <code>gateway run --force</code> can't free the port either (it needs <code>fuser</code>/<code>lsof</code>, neither of which ships here). And pattern-killing is unreliable: the running gateway's process line is just <code>openclaw</code> (so <code>pkill -f "gateway run"</code> never matches it, while <code>pkill -f openclaw</code> would also kill the very shell running this command). So we record the PID on start and <code>kill</code> exactly that — robust, with only <code>kill</code> + <code>setsid</code>.
 </Callout>
 
-The line that matters is **`listening on ws://0.0.0.0:30789`** — that's your agent's Control UI + WebSocket gateway (the port your Brev `openclaw` link maps to), running inside the sealed sandbox.
+The line that matters is **`listening on ws://0.0.0.0:30789`** — that's your agent's Control UI + WebSocket gateway, running inside the sealed sandbox. You'll expose it with `openshell forward` in the next lesson.
 
 <Callout type="note" title="What about port 30791?">
 You'll also see <code>Browser control listening on http://127.0.0.1:30791</code>. That's a <em>separate</em> helper OpenClaw always starts for browser automation (the Chrome-extension relay) — bound to <strong>127.0.0.1 only</strong>, inside the sandbox, so it's never exposed. Ignore it; your gateway is the <code>:30789</code> one. The <code>security warning</code>, <code>update available</code>, and <code>Chrome extension relay</code> lines are likewise harmless notices.

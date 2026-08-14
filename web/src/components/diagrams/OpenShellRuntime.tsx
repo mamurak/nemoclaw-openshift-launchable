@@ -18,7 +18,7 @@ type Comp = {
 const COMPONENTS: Comp[] = [
   { id: "gw", label: "Gateway", sub: "control plane · gRPC :8080", color: NV, lane: "agent",
     what: <>The brain. A gRPC API that allocates sandboxes, mints each one a scoped identity, hosts the policy engine + inference router, and exposes the operator-facing <code>openshell</code> CLI.</>,
-    k8s: <>A <strong>StatefulSet</strong> <code>openshell</code> (SQLite) + Service. Its <em>Kubernetes compute driver</em> watches the <code>agents.x-k8s.io</code> Sandbox CRD. Healthy = log line <code>Listing sandboxes from Kubernetes</code>. Reached in the lab via NodePort <code>30808</code>.</> },
+    k8s: <>A <strong>StatefulSet</strong> <code>openshell</code> (SQLite) + Service. Its <em>Kubernetes compute driver</em> watches the <code>agents.x-k8s.io</code> Sandbox CRD. Healthy = log line <code>Listing sandboxes from Kubernetes</code>. Reached externally via an OpenShift <code>Route</code>, in-cluster via the Service.</> },
   { id: "sup", label: "Sandbox Supervisor", sub: "openshell-sandbox · per pod", color: PURPLE, lane: "agent",
     what: <>Sideloaded into <em>every</em> sandbox. It sets up the agent's isolated network namespace, exchanges a bootstrap token for a sandbox JWT, relays exec/SSH, and enforces the sandbox-side policy.</>,
     k8s: <>An <strong>init-container</strong> (<code>openshell-supervisor-install</code>) copies the <code>openshell-sandbox</code> binary into the pod; the <code>agent</code> container runs it. It calls <code>IssueSandboxToken</code> back to the gateway over the in-cluster Service.</> },

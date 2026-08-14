@@ -1,19 +1,17 @@
 #!/usr/bin/env bash
-# Phase 80 — full observability stack on MicroShift: kube-prometheus-stack (Prometheus +
+# Phase 80 — full observability stack: kube-prometheus-stack (Prometheus +
 # Alertmanager + Grafana + node-exporter + kube-state-metrics) + Loki (logs) + Tempo
 # (traces), with a pre-loaded Agent Fleet dashboard. PRE-DEPLOYED with the platform; the
-# gating lives in setup.sh (DEPLOY_MONITORING=false to skip on a tiny instance). Running
-# this script directly always deploys.
+# gating lives in setup.sh (DEPLOY_MONITORING=false to skip). Running this script directly
+# always deploys.
 #
-# Grafana is published on NodePort 30030 (forwarded to the host by phase 50). Login:
-# admin / ${MONITORING_GRAFANA_PASSWORD:-openclaw}.
+# Grafana login: admin / ${MONITORING_GRAFANA_PASSWORD:-openclaw}.
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/common.sh
 source "$HERE/lib/common.sh"
 load_env
 
-export KUBECONFIG="$(kubeconfig_path)"
 require_cmd oc; require_cmd helm
 NS=monitoring
 GRAFANA_PW="${MONITORING_GRAFANA_PASSWORD:-openclaw}"
@@ -70,5 +68,4 @@ oc -n "$NS" rollout status statefulset/prometheus-kps-kube-prometheus-prometheus
 
 log "Monitoring stack deployed:"
 oc -n "$NS" get pods 2>&1 | tail -20
-log "Grafana on NodePort 30030 (host-forwarded by phase 50). Login: admin / ${GRAFANA_PW}"
-log "Expose host port 30030 as a Brev tunnel to reach Grafana."
+log "Grafana login: admin / ${GRAFANA_PW}"

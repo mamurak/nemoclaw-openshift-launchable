@@ -1,8 +1,8 @@
 // Custom Next.js server that also bridges a browser terminal to a real shell
-// (node-pty) over WebSocket. Runs as ONE process on the Brev node, next to the
-// live MicroShift cluster + OpenClaw agent. The shell starts with KUBECONFIG
-// pre-pointed at the cluster and an `openclaw` helper that execs into the agent
-// pod — so learners run `oc ...` and `openclaw devices list/approve` for real.
+// (node-pty) over WebSocket. The shell starts with the ServiceAccount token
+// auto-detected by oc/kubectl (in-cluster) and an `openclaw` helper that execs
+// into the agent pod — so learners run `oc ...` and `openclaw devices list/approve`
+// for real.
 import { createServer } from "node:http";
 import { parse } from "node:url";
 import { spawn } from "node:child_process";
@@ -14,9 +14,8 @@ const dev = process.env.NODE_ENV !== "production";
 const hostname = process.env.HOST || "0.0.0.0";
 const port = parseInt(process.env.PORT || "3000", 10);
 
-// Where the launchable lives on the Brev node + the kubeconfig phase 20 wrote.
-const LAB_CWD = process.env.LAB_CWD || `${process.env.HOME}/nemoclaw-openshift-launchable`;
-const LAB_KUBECONFIG = process.env.LAB_KUBECONFIG || `${LAB_CWD}/kubeconfig`;
+const LAB_CWD = process.env.LAB_CWD || `/app`;
+const LAB_KUBECONFIG = process.env.KUBECONFIG || "";
 const LAB_RC = process.env.LAB_RC || `${process.cwd()}/lab/labrc`;
 const MAX_SESSIONS = parseInt(process.env.LAB_MAX_SESSIONS || "25", 10);
 
@@ -32,7 +31,7 @@ function runCheck(cmd) {
   return new Promise((resolve) => {
     const p = spawn("/bin/bash", ["-lc", cmd], {
       cwd: LAB_CWD,
-      env: { ...process.env, KUBECONFIG: LAB_KUBECONFIG, LAB_CWD },
+      env: { ...process.env, ...(LAB_KUBECONFIG ? { KUBECONFIG: LAB_KUBECONFIG } : {}), LAB_CWD },
       timeout: 25000,
     });
     let out = "", errs = "";
@@ -85,7 +84,7 @@ server.on("upgrade", (req, socket, head) => {
       cols: 100,
       rows: 28,
       cwd: LAB_CWD,
-      env: { ...process.env, KUBECONFIG: LAB_KUBECONFIG, TERM: "xterm-256color", LAB_CWD, OCLAW_LAB: "1" },
+      env: { ...process.env, ...(LAB_KUBECONFIG ? { KUBECONFIG: LAB_KUBECONFIG } : {}), TERM: "xterm-256color", LAB_CWD, OCLAW_LAB: "1" },
     });
     const onData = (d) => { if (ws.readyState === ws.OPEN) ws.send(d); };
     shell.onData(onData);

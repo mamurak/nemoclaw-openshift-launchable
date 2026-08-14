@@ -11,8 +11,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Compiles the Next.js workshop site — typechecks TS and parses every MDX lesson (a broken
-  # component/diagram reference or TS error fails here).
   web-build:
     name: Web build (TS + MDX)
     runs-on: ubuntu-latest
@@ -29,15 +27,20 @@ jobs:
       - run: npm ci
       - run: npm run build
 
-  # Shell syntax for the provisioning phases (shellcheck is preinstalled on ubuntu runners).
   shellcheck:
     name: Shell scripts
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: shellcheck --severity=error --external-sources scripts/*.sh scripts/lib/*.sh
+      - run: >-
+          shellcheck --severity=error --external-sources
+          scripts/deploy.sh
+          scripts/00-preflight.sh
+          scripts/45-openclaw.sh
+          scripts/80-monitoring.sh
+          scripts/fleet.sh
+          scripts/lib/common.sh
 
-  # YAML syntax for manifests, helm values, and policies (multi-doc aware).
   yaml-syntax:
     name: YAML syntax
     runs-on: ubuntu-latest
@@ -50,6 +53,8 @@ jobs:
               glob.glob("manifests/**/*.yaml", recursive=True)
               + glob.glob("policies/**/*.yaml", recursive=True)
               + glob.glob("helm/**/*.yaml", recursive=True)
+              + glob.glob("chart/values.yaml")
+              + glob.glob("chart/charts/*/values.yaml")
           ))
           bad = 0
           for f in files:
@@ -61,3 +66,19 @@ jobs:
               sys.exit(f"{bad} invalid YAML file(s)")
           print(f"✓ {len(files)} YAML files valid")
           PY
+
+  helm-lint:
+    name: Helm lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+      - run: helm lint chart/
+      - run: helm template nemoclaw chart/ --set global.clusterAppsDomain=apps.test.example.com
+
+  docker-build:
+    name: Docker build (workshop image)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -f web/Dockerfile --target builder .

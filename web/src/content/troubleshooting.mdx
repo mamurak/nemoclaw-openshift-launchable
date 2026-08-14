@@ -1,30 +1,35 @@
-The gotchas we hit so you don't have to. Most are handled by the scripts — here's what to check if something's off (run the checks in the shell).
+The gotchas we hit so you don't have to. Most are handled by the Helm chart — here's what to check if something's off (run the checks in the shell).
 
 ## Can't reach the agent UI on :30789
-The agent UI is bridged out of the sealed sandbox by `openshell forward` (the `openclaw-forward` systemd unit publishes host `:30789`). Check the forward and that the OpenClaw gateway is up inside the sandbox:
+The agent UI is bridged out of the sealed sandbox by `openshell forward`. Check the forward and that the OpenClaw gateway is up inside the sandbox:
 
 ```bash
-sudo systemctl status openclaw-forward.service
-sudo ss -ltnp | grep ':30789'
 openshell forward list
 openshell sandbox exec -n shifty -- sh -c 'tail -3 /sandbox/gateway.log'   # gateway listening?
 ```
 
-## Can't reach the console on :30900 (or gateway :30808)
-NodePorts live inside the MINC container; a systemd forwarder publishes them on the host.
+## Can't reach the gateway
+The gateway is exposed via an OpenShift Route. Check that the Route exists and the gateway pod is running:
 
 ```bash
-systemctl status minc-nodeport-forward.service
-sudo ss -ltnp | grep -E ':30900|:30808'
-sudo systemctl restart minc-nodeport-forward.service
-```
-
-If `openshell sandbox list` cannot connect from the lab shell, check the gateway's NodePort `30808`:
-
-```bash
-sudo ss -ltnp | grep ':30808'
+oc -n openshell get route
+oc -n openshell get pods
 openshell gateway select cluster
 openshell sandbox list
+```
+
+If the Route exists but the gateway isn't responding, check the pod logs:
+
+```bash
+oc -n openshell logs openshell-0
+```
+
+## Can't reach the OpenShift console
+Check the console Route and pods:
+
+```bash
+oc -n openshift-console get route
+oc -n openshift-console get pods
 ```
 
 ## OpenClaw asks for device pairing
@@ -35,19 +40,9 @@ sbox-openclaw devices list
 sbox-openclaw devices approve --latest
 ```
 
-## Console shows “Please configure authentication”
-The standalone console needs a static user token even with auth disabled — the scripts inject a cluster-admin SA token. If you see this, re-apply the console manifest.
+## Image pulls stall ("unexpected EOF")
+Check the cluster's network connectivity — this is often an MTU or DNS issue on the underlying infrastructure.
 
-## Console is empty / “no resources”
-Not a bug — MicroShift lacks `project.openshift.io`. Use the **Project → All Projects** toggle or `/console/k8s/all-namespaces/pods`.
-
-## Image pulls stall (“unexpected EOF”)
-An MTU issue, not throttling — phase 20 clamps the node `eth0` MTU to 1400.
-
-<Callout type="warn" title="podman, not docker">
-If MicroShift won't come up, check <code>CONTAINER_ENGINE=podman</code> in <code>.env</code>. Docker's overlay breaks the nested CRI-O store.
-</Callout>
-
-<Callout type="note" title="Every phase is re-runnable">
-Each <code>scripts/NN-*.sh</code> is idempotent — fix the cause and re-run just that phase.
+<Callout type="note" title="Helm chart is re-deployable">
+The Helm chart is idempotent — fix the cause and re-deploy to reconcile.
 </Callout>

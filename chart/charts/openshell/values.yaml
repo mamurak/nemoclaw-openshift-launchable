@@ -1,0 +1,37 @@
+# Wrapper values — upstream.* keys pass through to the vendored OpenShell chart.
+upstream:
+  service:
+    type: ClusterIP
+    port: 8080
+
+  server:
+    disableTls: true
+    logLevel: info
+    auth:
+      allowUnauthenticatedUsers: true
+    sandboxImage: ghcr.io/ansjindal/openclaw-sandbox:2026.6.10
+    sandboxImagePullPolicy: IfNotPresent
+    sandboxNamespace: ""
+    grpcEndpoint: ""
+    defaultRuntimeClassName: ""
+    sandboxJwt:
+      secretDefaultMode: "0444"
+
+  podSecurityContext:
+    fsGroup: null
+  securityContext:
+    runAsUser: null
+
+  supervisor:
+    sideloadMethod: init-container
+
+  networkPolicy:
+    enabled: true
+
+# Wrapper-level settings
+sandboxPrepull:
+  enabled: true
+
+registry:
+  enabled: true
+  storageSize: 2Gi

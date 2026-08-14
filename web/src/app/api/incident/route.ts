@@ -7,11 +7,10 @@ import { spawn } from "node:child_process";
 // own telemetry. The agents only DIAGNOSE (read-only); the human approves the remediation
 // (clearing the fault), which this route applies. In production that's a git revert ArgoCD syncs.
 
-const HOME = process.env.HOME ?? "/home/ubuntu";
-const KUBECONFIG = process.env.KUBECONFIG || `${HOME}/.kube/config`;
-const env = { ...process.env, KUBECONFIG, PATH: `${process.env.PATH ?? ""}:/usr/local/bin:/usr/bin` };
+const KUBECONFIG = process.env.KUBECONFIG || "";
+const env = { ...process.env, ...(KUBECONFIG ? { KUBECONFIG } : {}), PATH: `${process.env.PATH ?? ""}:/usr/local/bin:/usr/bin` };
 const NS = "demo", APP = "shop-app";
-const KDIR = `${HOME}/nemoclaw-openshift-launchable/manifests/demo-app`;
+const KDIR = process.env.DEMO_APP_MANIFESTS || "/app/manifests/demo-app";
 const PROM = process.env.PROM_HOST || "kps-kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090";
 
 function kubectl(args: string[], timeoutMs = 60_000): Promise<{ code: number | null; out: string }> {

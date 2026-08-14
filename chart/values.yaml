@@ -1,0 +1,25 @@
+global:
+  # The cluster's apps domain for Route hostnames (e.g. apps.mycluster.example.com).
+  # Auto-detected by deploy.sh: oc get ingresses.config/cluster -o jsonpath='{.spec.domain}'
+  clusterAppsDomain: ""
+  # Override if the cluster has no default StorageClass. Empty = use cluster default.
+  storageClassName: ""
+
+openshell:
+  enabled: true
+
+monitoring:
+  enabled: true
+  grafana:
+    adminPassword: openclaw
+
+workshop:
+  enabled: true
+  image: quay.io/nemoclaw/workshop:latest
+  inference:
+    baseUrl: ""
+    model: ""
+    apiKey: ""
+  openclaw:
+    agentName: shifty
+    gatewayPassword: openclaw

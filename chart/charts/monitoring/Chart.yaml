@@ -1,0 +1,17 @@
+apiVersion: v2
+name: monitoring
+description: Observability stack wrapper — kube-prometheus-stack + Loki + Tempo + extras
+type: application
+version: 0.1.0
+
+dependencies:
+  - name: kube-prometheus-stack
+    version: "72.*"
+    repository: "https://prometheus-community.github.io/helm-charts"
+    alias: kps
+  - name: loki
+    version: "6.*"
+    repository: "https://grafana.github.io/helm-charts"
+  - name: tempo
+    version: "1.*"
+    repository: "https://grafana.github.io/helm-charts"

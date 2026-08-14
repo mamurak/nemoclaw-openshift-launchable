@@ -1,0 +1,106 @@
+{{- if .Values.registry.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: registry-storage
+  namespace: {{ .Release.Namespace }}
+  labels: { app: registry, component: skill-registry }
+spec:
+  accessModes: [ReadWriteOnce]
+  {{- if .Values.global.storageClassName }}
+  storageClassName: {{ .Values.global.storageClassName | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.registry.storageSize }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: registry-config
+  namespace: {{ .Release.Namespace }}
+  labels: { app: registry, component: skill-registry }
+data:
+  config.yaml: |
+    storage: /verdaccio/storage
+    web:
+      enable: true
+      title: NemoClaw · Private Skill Registry
+    auth:
+      htpasswd:
+        file: /verdaccio/storage/htpasswd
+        max_users: 1000
+    uplinks:
+      npmjs:
+        url: https://registry.npmjs.org/
+        cache: true
+        maxage: 30m
+    packages:
+      '@*/*':
+        access: $all
+        publish: $authenticated
+        unpublish: $authenticated
+        proxy: npmjs
+      '**':
+        access: $all
+        publish: $authenticated
+        unpublish: $authenticated
+        proxy: npmjs
+    server:
+      keepAliveTimeout: 60
+    log: { type: stdout, format: pretty, level: http }
+    listen: 0.0.0.0:4873
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: registry
+  namespace: {{ .Release.Namespace }}
+  labels: { app: registry, component: skill-registry }
+spec:
+  replicas: 1
+  strategy: { type: Recreate }
+  selector:
+    matchLabels: { app: registry }
+  template:
+    metadata:
+      labels: { app: registry, component: skill-registry }
+    spec:
+      securityContext:
+        runAsNonRoot: true
+      containers:
+        - name: verdaccio
+          image: verdaccio/verdaccio:6
+          ports:
+            - containerPort: 4873
+          readinessProbe:
+            httpGet: { path: /-/ping, port: 4873 }
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: { path: /-/ping, port: 4873 }
+            initialDelaySeconds: 20
+            periodSeconds: 20
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits: { memory: 512Mi }
+          volumeMounts:
+            - { name: storage, mountPath: /verdaccio/storage }
+            - { name: config, mountPath: /verdaccio/conf }
+      volumes:
+        - name: storage
+          persistentVolumeClaim: { claimName: registry-storage }
+        - name: config
+          configMap: { name: registry-config }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: registry
+  namespace: {{ .Release.Namespace }}
+  labels: { app: registry, component: skill-registry }
+spec:
+  selector: { app: registry }
+  ports:
+    - { name: http, port: 4873, targetPort: 4873 }
+{{- end }}

@@ -1,4 +1,4 @@
-The platform is already running — a MicroShift cluster with the **OpenShell gateway** on it (Part II). Now you do the interesting part by hand: **create your own agent.**
+The platform is already running — an OpenShift cluster with the **OpenShell gateway** on it (Part II). Now you do the interesting part by hand: **create your own agent.**
 
 In OpenShell, an agent is a **sandbox** — a pod the gateway creates, seals in its own private network, and governs with a policy. You ask for one with `openshell sandbox create`. We'll make one that runs **OpenClaw** (the agent framework). We'll go one small step at a time.
 
@@ -10,7 +10,7 @@ Every command you run talks to the gateway. First check it answers:
 openshell status
 ```
 
-You want `Status: Connected` and a version. The endpoint reads `http://127.0.0.1:30808` — that's the gateway's NodePort, republished on this VM by a host forwarder (Part II explains why). If it's not connected, see [Troubleshooting](/learn/troubleshooting).
+You want `Status: Connected` and a version. The endpoint is the gateway's OpenShift Route URL (Part II explains how it's reached). If it's not connected, see [Troubleshooting](/learn/troubleshooting).
 
 ## Step 2 — Look at the policy you'll use
 

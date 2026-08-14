@@ -12,7 +12,7 @@ export default function Home() {
         <br />powered by <span className="text-[var(--color-nv-bright)]">NVIDIA OpenShell</span> and <span className="text-[var(--color-nv-bright)]">OpenClaw</span>.
       </h1>
       <p className="mt-5 max-w-2xl text-lg text-[var(--color-fg-dim)]">
-        Stand up your own single-node OpenShift cluster, run a sandboxed agent — <strong>Shifty 🦞</strong> —
+        Deploy a sandboxed AI agent — <strong>Shifty 🦞</strong> — to your OpenShift cluster with a single Helm chart,
         and drive it from a <strong>live shell right in this page</strong>. No GPU, no Kubernetes experience needed.
       </p>
       <div className="mt-8 flex flex-wrap gap-3">

@@ -1,0 +1,76 @@
+{{- if .Values.eventExporter.enabled }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: event-exporter
+  namespace: {{ .Release.Namespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ .Release.Namespace }}-event-exporter
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: view
+subjects:
+  - kind: ServiceAccount
+    name: event-exporter
+    namespace: {{ .Release.Namespace }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: event-exporter-cfg
+  namespace: {{ .Release.Namespace }}
+data:
+  config.yaml: |
+    logLevel: error
+    logFormat: json
+    route:
+      routes:
+        - match:
+            - receiver: loki
+    receivers:
+      - name: loki
+        loki:
+          url: http://loki.{{ .Release.Namespace }}.svc.cluster.local:3100/loki/api/v1/push
+          streamLabels:
+            job: kubernetes-event-exporter
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: event-exporter
+  namespace: {{ .Release.Namespace }}
+  labels: { app: event-exporter }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: event-exporter }
+  template:
+    metadata:
+      labels: { app: event-exporter }
+    spec:
+      serviceAccountName: event-exporter
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: event-exporter
+          image: ghcr.io/resmoio/kubernetes-event-exporter:v1.7
+          args: ["-conf=/data/config.yaml"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+          resources:
+            requests: { cpu: 10m, memory: 32Mi }
+            limits: { cpu: 100m, memory: 128Mi }
+          volumeMounts:
+            - name: cfg
+              mountPath: /data
+      volumes:
+        - name: cfg
+          configMap: { name: event-exporter-cfg }
+{{- end }}

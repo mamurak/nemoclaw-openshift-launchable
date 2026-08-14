@@ -1,0 +1,17 @@
+image: quay.io/nemoclaw/workshop:latest
+replicas: 1
+
+inference:
+  baseUrl: ""
+  model: ""
+  apiKey: ""
+
+openclaw:
+  agentName: shifty
+  gatewayPassword: openclaw
+
+openshellGateway:
+  endpointUrl: "http://openshell.openshell.svc.cluster.local:8080"
+
+grafana:
+  origin: "http://kps-grafana.monitoring.svc.cluster.local:80"

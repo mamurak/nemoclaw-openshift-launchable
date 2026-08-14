@@ -7,9 +7,8 @@ import { randomUUID } from "node:crypto";
 // synthesizes their findings. The website never calls a model directly — the agents reach it
 // through inference.local — so no host-side inference config is needed. Streams a live timeline.
 
-const HOME = process.env.HOME ?? "/home/ubuntu";
-const KUBECONFIG = process.env.KUBECONFIG || `${HOME}/.kube/config`;
-const env = { ...process.env, NODE_NO_WARNINGS: "1", KUBECONFIG, PATH: `${process.env.PATH ?? ""}:${HOME}/.local/bin:/usr/local/bin:/usr/bin` };
+const KUBECONFIG = process.env.KUBECONFIG || "";
+const env = { ...process.env, NODE_NO_WARNINGS: "1", ...(KUBECONFIG ? { KUBECONFIG } : {}), PATH: `${process.env.PATH ?? ""}:/usr/local/bin:/usr/bin` };
 const FLEET = (process.env.FLEET || "logs,metrics,traces,events,analyst").split(",").map((s) => s.trim()).filter(Boolean);
 
 // Prescribed probe per specialist. Free-form ReAct overflows the model's context (the agent

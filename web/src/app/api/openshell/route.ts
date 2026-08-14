@@ -10,9 +10,8 @@ import { promisify } from "node:util";
 
 const run = promisify(execFile);
 const NS = "openshell";
-const HOME = process.env.HOME ?? "/home/ubuntu";
-const KUBECONFIG = process.env.KUBECONFIG || `${HOME}/nemoclaw-openshift-launchable/kubeconfig`;
-const env = { ...process.env, KUBECONFIG, PATH: `${process.env.PATH ?? ""}:${HOME}/.local/bin:/usr/local/bin:/usr/bin` };
+const KUBECONFIG = process.env.KUBECONFIG || "";
+const env = { ...process.env, ...(KUBECONFIG ? { KUBECONFIG } : {}), PATH: `${process.env.PATH ?? ""}:/usr/local/bin:/usr/bin` };
 const validName = (n: string) => /^[a-z0-9][a-z0-9-]{0,40}$/.test(n);
 
 async function oc(args: string[]) {

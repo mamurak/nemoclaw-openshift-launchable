@@ -1,34 +1,25 @@
-When your Brev instance booted, the launchable pre-built everything **up to and including a running OpenShift-compatible cluster**, so you can spend your time on the agent, not on `kubeadm`. This lesson shows *how* that base was made — and lets you poke at it live.
+The Helm chart deployed everything onto a real **OpenShift cluster** — so you can spend your time on the agent, not on infrastructure. This lesson shows what's running and lets you poke at it live.
 
 ## What's underneath
 
-The cluster is **MicroShift** — Red Hat's edge-sized OpenShift — running **inside a podman container** (a setup often called MINC, "MicroShift-in-Container"). One VM, one container, one node, but real OpenShift APIs: `Routes`, `SecurityContextConstraints`, the works.
+The cluster is **Red Hat OpenShift** — enterprise Kubernetes with Routes, SecurityContextConstraints, and the `oc` CLI built in. The Helm chart installed the OpenShell gateway and its dependencies into this cluster; your agents will run here as governed pods.
 
 ```text
-Brev VM (Ubuntu)
-└── podman
-    └── microshift container  ← the "node"
-        └── MicroShift (single-node OpenShift)
-```
-
-The provisioning (you don't run these — they already ran) was, in essence:
-
-```bash
-# host deps: podman + tooling      (scripts/10-host-deps.sh)
-# CONTAINER_ENGINE=podman — docker breaks MINC's nested mounts
-# start MicroShift inside podman    (scripts/20-microshift.sh)
-# → writes a kubeconfig you can use with `oc`
+OpenShift cluster
+├── openshell namespace     ← gateway + agent sandboxes
+├── monitoring namespace    ← Prometheus, Grafana, Loki, Tempo
+└── your agent (Part IV)    ← the sandbox you create
 ```
 
 ## Inspect it live
 
-Your lab shell already has `oc` pointed at the cluster. Confirm the node is up:
+Your lab shell already has `oc` pointed at the cluster. Confirm the nodes are up:
 
 ```bash
 oc get nodes
 ```
 
-One `Ready` node = your whole cluster. Now look at what's already deployed for you:
+`Ready` nodes = your cluster. Now look at what's already deployed for you:
 
 ```bash
 oc get ns
@@ -46,10 +37,16 @@ oc api-resources | grep -iE "route.openshift.io|security.openshift.io" | head
 
 `SecurityContextConstraints` and `route.openshift.io` are OpenShift extensions a vanilla Kubernetes cluster doesn't have. That's the Red Hat layer your agents run on.
 
-<Callout type="tip" title="Why a container, not a VM-per-node">
-MINC makes the whole cluster a single disposable container — fast to boot on a Brev instance, and it still exercises the real OpenShift admission + SCC path your agents must satisfy. The trade-off (no cloud LoadBalancer) is why we reach in-cluster services through a host forwarder + NodePort — the next lesson shows how that works for the gateway.
+Check the Routes the Helm chart created — these are how you reach the gateway and console from your browser:
+
+```bash
+oc get routes -A
+```
+
+<Callout type="tip" title="Routes, not NodePorts">
+OpenShift Routes give each service a real hostname with TLS termination — no port-forwarding hacks needed. The gateway, console, and Grafana are all reachable at their Route URLs.
 </Callout>
 
 <Callout type="rh" title="The base is done">
-A real single-node OpenShift, pre-built and Ready. Everything from here up — the gateway, the agent — sits on this. Next: the OpenShell gateway that turns this cluster into an agent platform.
+A real OpenShift cluster, pre-built and Ready. Everything from here up — the gateway, the agent — sits on this. Next: the OpenShell gateway that turns this cluster into an agent platform.
 </Callout>

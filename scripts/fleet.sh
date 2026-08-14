@@ -16,6 +16,13 @@
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"; REPO="$(cd "$HERE/.." && pwd)"
 [[ -f "$REPO/.env" ]] && set -a && . "$REPO/.env" && set +a || true
+# Auto-discover the gateway Route URL and register it before fleet operations.
+GW_URL="${OPENSHELL_CLI_ENDPOINT:-$(oc -n openshell get route openshell-gateway -o jsonpath='https://{.spec.host}' 2>/dev/null || echo http://openshell.openshell.svc.cluster.local:8080)}"
+if command -v openshell >/dev/null 2>&1; then
+  openshell gateway add "$GW_URL" --local --name cluster >/dev/null 2>&1 || true
+  openshell gateway select cluster >/dev/null 2>&1 || true
+fi
+
 IMAGE="${OPENCLAW_SANDBOX_IMAGE:-ghcr.io/ansjindal/openclaw-sandbox:2026.6.10}"
 MODEL="${NEMOCLAW_MODEL:-}"; PROVIDER="${NEMOCLAW_INFERENCE_PROVIDER:-default}"
 API="${NEMOCLAW_INFERENCE_API:-openai-completions}"

@@ -12,16 +12,14 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$HERE/lib/common.sh"
 load_env
 
-export KUBECONFIG="$(kubeconfig_path)"
 require_cmd oc
-[[ -f "$KUBECONFIG" ]] || die "kubeconfig not found — run phase 20 first."
 
 NS="${OPENSHELL_NAMESPACE:-openshell}"
 AGENT="${OPENCLAW_AGENT_NAME:-shifty}"
 UI_PORT="${OPENCLAW_UI_PORT:-30789}"
 GW_PASSWORD="${OPENCLAW_GATEWAY_PASSWORD:-openshell-wad26}"
 SANDBOX_IMAGE="${OPENCLAW_SANDBOX_IMAGE:-ghcr.io/ansjindal/openclaw-sandbox:2026.6.10}"
-GW_URL="${OPENSHELL_CLI_ENDPOINT:-http://127.0.0.1:30808}"
+GW_URL="${OPENSHELL_CLI_ENDPOINT:-$(oc -n openshell get route openshell-gateway -o jsonpath='https://{.spec.host}' 2>/dev/null || echo http://openshell.openshell.svc.cluster.local:8080)}"
 
 # Inference creds (optional — if missing, the agent deploys UNCONFIGURED and the user
 # sets a provider/model hands-on later). Never halt.
@@ -209,35 +207,6 @@ ox sh -c "echo $BJB64 | base64 -d > /sandbox/bootstrap-admin.js && node /sandbox
 ox sh -c "cd /sandbox && [ -f gateway.pid ] && kill \"\$(cat gateway.pid)\" 2>/dev/null; sleep 2; setsid nohup openclaw gateway run --port ${UI_PORT} --bind lan --auth password --password '${GW_PASSWORD}' --allow-unconfigured >/sandbox/gateway.log 2>&1 < /dev/null & echo \$! > /sandbox/gateway.pid; sleep 6; grep -E 'listening on ws' /sandbox/gateway.log | tail -1" \
   || warn "Gateway restart after admin bootstrap failed."
 
-# --- expose the Control UI on the host via `openshell forward` (persistent systemd unit) ---
-log "Installing openclaw-forward.service (openshell forward host:${UI_PORT} -> sandbox)"
-RUN_USER="$(id -un)"; RUN_HOME="$HOME"
-OPENSHELL_BIN="$(command -v openshell)"
-sudo tee /etc/systemd/system/openclaw-forward.service >/dev/null <<UNIT
-[Unit]
-Description=OpenShell forward: host ${UI_PORT} -> OpenClaw agent '${AGENT}' Control UI
-After=network-online.target
-Wants=network-online.target
-
-[Service]
-Type=simple
-User=${RUN_USER}
-Environment=HOME=${RUN_HOME}
-Environment=PATH=${RUN_HOME}/.local/bin:/usr/local/bin:/usr/bin:/bin
-# Re-select the gateway each start (CLI state lives in \$HOME), then hold the forward open.
-ExecStart=/bin/sh -c '${OPENSHELL_BIN} gateway select cluster >/dev/null 2>&1; exec ${OPENSHELL_BIN} forward start 0.0.0.0:${UI_PORT} ${AGENT}'
-Restart=always
-RestartSec=5
-
-[Install]
-WantedBy=multi-user.target
-UNIT
-sudo systemctl daemon-reload
-sudo systemctl enable --now openclaw-forward.service >/dev/null 2>&1 || warn "Could not start openclaw-forward.service."
-sleep 4
-
 log "OpenClaw agent '${AGENT}' is a gateway-managed sandbox in namespace ${NS}:"
 oc -n "$NS" get pod "$AGENT" 2>/dev/null || openshell sandbox list 2>/dev/null | head
-UI_CODE="$(curl -sS -m6 -o /dev/null -w '%{http_code}' "http://127.0.0.1:${UI_PORT}/" 2>/dev/null || echo 000)"
-log "Control UI on host 127.0.0.1:${UI_PORT} -> HTTP ${UI_CODE}  (publish host port ${UI_PORT} as your Brev URL)"
 log "Control UI password: ${GW_PASSWORD}  (first browser still needs device pairing approval)"

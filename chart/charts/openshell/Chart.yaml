@@ -1,0 +1,11 @@
+apiVersion: v2
+name: openshell
+description: OpenShell gateway wrapper — SCC grants, Route, sandbox prepull, skill registry
+type: application
+version: 0.1.0
+
+dependencies:
+  - name: openshell
+    version: "0.0.71"
+    repository: "oci://ghcr.io/nvidia/openshell"
+    alias: upstream

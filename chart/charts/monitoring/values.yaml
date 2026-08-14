@@ -1,0 +1,127 @@
+# kube-prometheus-stack pass-through (via alias "kps")
+kps:
+  crds:
+    enabled: true
+  prometheusOperator:
+    admissionWebhooks:
+      enabled: false
+    tls:
+      enabled: false
+  prometheus:
+    prometheusSpec:
+      retention: 2d
+      serviceMonitorSelectorNilUsesHelmValues: false
+      podMonitorSelectorNilUsesHelmValues: false
+      ruleSelectorNilUsesHelmValues: false
+      probeSelectorNilUsesHelmValues: false
+      scrapeConfigSelectorNilUsesHelmValues: false
+      storageSpec:
+        volumeClaimTemplate:
+          spec:
+            accessModes: ["ReadWriteOnce"]
+            resources: { requests: { storage: 8Gi } }
+      resources:
+        requests: { cpu: 150m, memory: 600Mi }
+  alertmanager:
+    enabled: true
+    alertmanagerSpec:
+      storage:
+        volumeClaimTemplate:
+          spec:
+            accessModes: ["ReadWriteOnce"]
+            resources: { requests: { storage: 1Gi } }
+  grafana:
+    enabled: true
+    defaultDashboardsEnabled: true
+    grafana.ini:
+      server:
+        root_url: "%(protocol)s://%(domain)s/grafana/"
+        serve_from_sub_path: true
+      dashboards:
+        default_home_dashboard_path: /tmp/dashboards/agent-fleet.json
+    service:
+      type: ClusterIP
+    persistence:
+      enabled: true
+      type: pvc
+      accessModes: ["ReadWriteOnce"]
+      size: 2Gi
+    sidecar:
+      dashboards:
+        enabled: true
+        label: grafana_dashboard
+        searchNamespace: ALL
+      datasources:
+        enabled: true
+        label: grafana_datasource
+        searchNamespace: ALL
+  nodeExporter:
+    enabled: true
+  prometheus-node-exporter:
+    hostRootFsMount:
+      enabled: true
+  kube-state-metrics:
+    resources:
+      requests: { cpu: 20m, memory: 64Mi }
+  kubeControllerManager: { enabled: false }
+  kubeScheduler: { enabled: false }
+  kubeProxy: { enabled: false }
+  kubeEtcd: { enabled: false }
+
+# Loki pass-through
+loki:
+  deploymentMode: SingleBinary
+  loki:
+    auth_enabled: false
+    commonConfig:
+      replication_factor: 1
+    storage:
+      type: filesystem
+    schemaConfig:
+      configs:
+        - from: "2024-01-01"
+          store: tsdb
+          object_store: filesystem
+          schema: v13
+          index: { prefix: loki_index_, period: 24h }
+    limits_config:
+      retention_period: 72h
+  singleBinary:
+    replicas: 1
+    persistence:
+      enabled: true
+      size: 5Gi
+    resources:
+      requests: { cpu: 100m, memory: 256Mi }
+  backend: { replicas: 0 }
+  read: { replicas: 0 }
+  write: { replicas: 0 }
+  chunksCache: { enabled: false }
+  resultsCache: { enabled: false }
+  gateway: { enabled: false }
+  lokiCanary: { enabled: false }
+  test: { enabled: false }
+
+# Tempo pass-through
+tempo:
+  tempo:
+    storage:
+      trace:
+        backend: local
+        local:
+          path: /var/tempo/traces
+    metricsGenerator:
+      enabled: false
+    resources:
+      requests: { cpu: 50m, memory: 128Mi }
+  persistence:
+    enabled: true
+    size: 3Gi
+
+# Wrapper-level settings
+grafanaRoute:
+  enabled: true
+eventExporter:
+  enabled: true
+logShipper:
+  enabled: true

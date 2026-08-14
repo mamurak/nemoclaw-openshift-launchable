@@ -1,0 +1,67 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-ds-loki-tempo
+  namespace: {{ .Release.Namespace }}
+  labels:
+    grafana_datasource: "1"
+data:
+  loki-tempo.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: Loki
+        type: loki
+        access: proxy
+        url: http://loki.{{ .Release.Namespace }}.svc.cluster.local:3100
+        jsonData:
+          derivedFields:
+            - name: TraceID
+              matcherRegex: "traceID=(\\w+)"
+              url: "$${__value.raw}"
+              datasourceUid: tempo
+      - name: Tempo
+        type: tempo
+        uid: tempo
+        access: proxy
+        url: http://tempo.{{ .Release.Namespace }}.svc.cluster.local:3100
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dash-agent-fleet
+  namespace: {{ .Release.Namespace }}
+  labels:
+    grafana_dashboard: "1"
+data:
+  agent-fleet.json: |
+    {
+      "title": "OpenShell Agent Fleet",
+      "uid": "agent-fleet",
+      "tags": ["openshell", "workshop"],
+      "timezone": "browser",
+      "schemaVersion": 39,
+      "time": { "from": "now-1h", "to": "now" },
+      "panels": [
+        {
+          "type": "stat", "title": "Sandbox pods (openshell + openclaw)",
+          "gridPos": { "h": 5, "w": 8, "x": 0, "y": 0 },
+          "targets": [{ "expr": "count(kube_pod_info{namespace=~\"openshell|openclaw\"})", "refId": "A" }],
+          "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "steps": [{ "color": "green", "value": null }] } } }
+        },
+        {
+          "type": "timeseries", "title": "Agent CPU (cores) by pod",
+          "gridPos": { "h": 8, "w": 16, "x": 8, "y": 0 },
+          "targets": [{ "expr": "sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=~\"openshell|openclaw\",container!=\"\"}[5m]))", "refId": "A", "legendFormat": "{{ "{{pod}}" }}" }]
+        },
+        {
+          "type": "timeseries", "title": "Agent memory (MiB) by pod",
+          "gridPos": { "h": 8, "w": 16, "x": 8, "y": 8 },
+          "targets": [{ "expr": "sum by (pod) (container_memory_working_set_bytes{namespace=~\"openshell|openclaw\",container!=\"\"}) / 1024 / 1024", "refId": "A", "legendFormat": "{{ "{{pod}}" }}" }]
+        },
+        {
+          "type": "stat", "title": "Container restarts (1h)",
+          "gridPos": { "h": 5, "w": 8, "x": 0, "y": 5 },
+          "targets": [{ "expr": "sum(increase(kube_pod_container_status_restarts_total{namespace=~\"openshell|openclaw\"}[1h]))", "refId": "A" }]
+        }
+      ]
+    }

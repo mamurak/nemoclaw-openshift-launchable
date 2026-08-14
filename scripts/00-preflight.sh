@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
-# Phase 00 — preflight. No nested virt or GPU needed in this topology: MicroShift runs
-# as a container (MINC) and inference is remote. We just need a container engine,
-# enough CPU/RAM/disk for MicroShift + OpenShell, and the remote-endpoint settings.
+# Phase 00 — preflight. Validates that the user is logged into an OpenShift cluster
+# and has the required CLI tools. No GPU needed — inference is remote.
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/common.sh
@@ -10,22 +9,21 @@ load_env
 
 log "Preflight checks"
 
-# --- resources ---
-CPUS=$(nproc)
-RAM_GB=$(awk '/MemTotal/ {printf "%d", $2/1024/1024}' /proc/meminfo)
-DISK_GB=$(df -BG --output=avail / | tail -1 | tr -dc '0-9')
-log "Host: ${CPUS} vCPU, ${RAM_GB} GB RAM, ${DISK_GB} GB free on /"
-(( CPUS  >= 4  )) || warn "Fewer than 4 vCPU — MicroShift + OpenShell will be tight."
-(( RAM_GB >= 8  )) || warn "Less than 8 GB RAM — MicroShift wants 2 GB; OpenShell + sandboxes need headroom."
-(( DISK_GB >= 40 )) || warn "Less than 40 GB free — CoreOS image + sandbox images may not fit."
+# --- required CLI tools ---
+require_cmd oc
+require_cmd helm
 
-# --- container engine (MINC runs MicroShift inside it) ---
-ENGINE="${CONTAINER_ENGINE:-podman}"
-if command -v "$ENGINE" >/dev/null 2>&1; then
-  log "Container engine '${ENGINE}' present"
+# --- OpenShift login ---
+if oc whoami >/dev/null 2>&1; then
+  log "Logged in to OpenShift as $(oc whoami) on $(oc whoami --show-server 2>/dev/null || echo '(unknown server)')"
 else
-  warn "'${ENGINE}' not found — phase 10 will install it."
+  die "Not logged in to OpenShift — run 'oc login' first."
 fi
+
+# --- oc / helm versions (informational) ---
+OC_VER="$(oc version --client 2>/dev/null | head -1 || echo unknown)"
+HELM_VER="$(helm version --short 2>/dev/null || echo unknown)"
+log "oc: ${OC_VER}  |  helm: ${HELM_VER}"
 
 # --- remote inference endpoint (OPTIONAL) ---
 # Hybrid model config: if these are set the agent is pre-configured; if not, it deploys
@@ -35,4 +33,4 @@ fi
 [[ -n "${NEMOCLAW_INFERENCE_BASE_URL:-}" ]] || warn "NEMOCLAW_INFERENCE_BASE_URL empty — agent will deploy unconfigured."
 [[ -n "${NEMOCLAW_API_KEY:-}" ]]            || warn "NEMOCLAW_API_KEY empty — agent will deploy unconfigured."
 
-log "Preflight complete. (No nested virtualization or local GPU required.)"
+log "Preflight complete."

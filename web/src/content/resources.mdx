@@ -8,19 +8,15 @@ Three live tools sit in the header, next to the Red Hat / NVIDIA chips:
 - **Approvals** → [/approvals](/approvals). Two human-in-the-loop inboxes, with a live pending-count badge:
   - **Access requests** — when the agent is denied reaching an API/website, the gateway proposes an allow-rule; **Approve** merges it into the agent's *live* egress policy, **Deny** rejects it (the gateway draft-policy RPCs).
   - **Device approvals** — browsers/CLIs asking to pair with the agent's Control UI; approve or deny each.
-- **Links** — opens your **Brev instance's services** in a new tab:
-  - **OpenClaw UI** — your agent's Control UI (chat + device pairing), at `openclaw-<id>.brevlab.com`.
-  - **Grafana** — the observability dashboards (same-origin `/grafana`, no ID needed).
-  - **OpenShift console** — the cluster web console (`openshift-<id>.brevlab.com/console/`).
-
-  The dropdown also lets you set/override your **Brev instance ID** — it's auto-detected from this page's URL (the suffix in `…-<id>.brevlab.com`); set it by hand if a link doesn't resolve.
+- **Links** — opens your cluster services in a new tab:
+  - **OpenClaw UI** — your agent's Control UI (chat + device pairing), at its OpenShift Route.
+  - **Grafana** — the observability dashboards (same-origin `/grafana`).
+  - **OpenShift console** — the cluster web console, at its Route URL.
 
 ## The stack
 - **Red Hat OpenShift** — docs.openshift.com
-- **MicroShift** — microshift.io (the OKD build & MINC)
 - **NVIDIA OpenShell** — the agent sandbox runtime & control plane
 - **OpenClaw** — the agent & its control UI; `openclaw --help`, docs.openclaw.ai
-- **NVIDIA Brev** — brev.nvidia.com (instances & credits)
 - **build.nvidia.com** — OpenAI-compatible model endpoints (NIM)
 
 ## Concepts worth a read

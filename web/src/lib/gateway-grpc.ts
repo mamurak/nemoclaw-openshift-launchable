@@ -13,7 +13,7 @@ const opts = { keepCase: false, longs: String, enums: String, defaults: true, on
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const openshellProto = grpc.loadPackageDefinition(protoLoader.loadSync(path.join(PROTO_DIR, "openshell.proto"), opts)) as any;
 const OpenShellService = openshellProto.openshell.v1.OpenShell;
-const ENDPOINT = process.env.OPENSHELL_GATEWAY_ENDPOINT || "127.0.0.1:30808";
+const ENDPOINT = process.env.OPENSHELL_GATEWAY_ENDPOINT || "openshell.openshell.svc.cluster.local:8080";
 
 /** Call a unary openshell.v1.OpenShell method on the gateway. */
 export function callGateway<T = unknown>(method: string, request: Record<string, unknown>, timeoutMs = 15000): Promise<T> {

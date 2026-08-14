@@ -1,18 +1,15 @@
 #!/usr/bin/env bash
-# Phase 30 — deploy the OpenShell gateway onto MicroShift via the official OCI Helm
+# Phase 30 — deploy the OpenShell gateway onto OpenShift via the official OCI Helm
 # chart, configured with the KUBERNETES compute driver so sandbox pods run as native
-# MicroShift pods. MicroShift is OpenShift-derived, so SCCs apply — same security
-# overrides as full OpenShift. Chart: oci://ghcr.io/nvidia/openshell/helm-chart (alpha).
+# OpenShift pods. SCCs apply. Chart: oci://ghcr.io/nvidia/openshell/helm-chart (alpha).
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/common.sh
 source "$HERE/lib/common.sh"
 load_env
 
-export KUBECONFIG="$(kubeconfig_path)"
 require_cmd oc
 require_cmd helm
-[[ -f "$KUBECONFIG" ]] || die "kubeconfig not found at $KUBECONFIG — run phase 20 first."
 
 NS="${OPENSHELL_NAMESPACE:-openshell}"
 CHART="${OPENSHELL_CHART:-oci://ghcr.io/nvidia/openshell/helm-chart}"

@@ -1,0 +1,95 @@
+{{- if .Values.logShipper.enabled }}
+apiVersion: v1
+kind: ServiceAccount
+metadata: { name: log-shipper, namespace: {{ .Release.Namespace }} }
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata: { name: {{ .Release.Namespace }}-log-shipper }
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "pods/log", "namespaces", "nodes", "nodes/proxy"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata: { name: {{ .Release.Namespace }}-log-shipper }
+roleRef: { apiGroup: rbac.authorization.k8s.io, kind: ClusterRole, name: {{ .Release.Namespace }}-log-shipper }
+subjects:
+  - { kind: ServiceAccount, name: log-shipper, namespace: {{ .Release.Namespace }} }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: { name: log-shipper-cfg, namespace: {{ .Release.Namespace }} }
+data:
+  config.alloy: |
+    discovery.kubernetes "pods" { role = "pod" }
+
+    discovery.relabel "demo_pods" {
+      targets = discovery.kubernetes.pods.targets
+      rule {
+        source_labels = ["__meta_kubernetes_namespace"]
+        regex         = "demo"
+        action        = "keep"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_namespace"]
+        target_label  = "namespace"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_pod_name"]
+        target_label  = "pod"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_pod_label_app"]
+        target_label  = "app"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_pod_container_name"]
+        target_label  = "container"
+      }
+    }
+
+    loki.source.kubernetes "demo" {
+      targets    = discovery.relabel.demo_pods.output
+      forward_to = [loki.write.default.receiver]
+    }
+
+    loki.write "default" {
+      endpoint { url = "http://loki.{{ .Release.Namespace }}.svc.cluster.local:3100/loki/api/v1/push" }
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: log-shipper
+  namespace: {{ .Release.Namespace }}
+  labels: { app: log-shipper }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: log-shipper } }
+  template:
+    metadata: { labels: { app: log-shipper } }
+    spec:
+      serviceAccountName: log-shipper
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: alloy
+          image: grafana/alloy:v1.5.1
+          args: ["run", "/etc/alloy/config.alloy", "--storage.path=/tmp/alloy", "--server.http.listen-addr=0.0.0.0:12345"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+          resources:
+            requests: { cpu: 20m, memory: 64Mi }
+            limits: { cpu: 200m, memory: 256Mi }
+          volumeMounts:
+            - { name: cfg, mountPath: /etc/alloy }
+            - { name: data, mountPath: /tmp/alloy }
+      volumes:
+        - { name: cfg, configMap: { name: log-shipper-cfg } }
+        - { name: data, emptyDir: {} }
+{{- end }}

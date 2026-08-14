@@ -2,7 +2,7 @@
 # Phase 70 (OPTIONAL, default on) — build + serve the interactive workshop website on the
 # instance. It's a Next.js app (web/) with a live in-browser shell (node-pty) bridged to a
 # real bash with `oc` + an `openclaw` helper, so attendees run lessons against the live
-# cluster. Exposed on PORT 3000 → publish that as a Brev tunnel. Set DEPLOY_WORKSHOP=false to skip.
+# cluster. Exposed on PORT 3000. Set DEPLOY_WORKSHOP=false to skip.
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/common.sh
@@ -43,7 +43,7 @@ if ! command -v openshell >/dev/null 2>&1; then
     || warn "openshell CLI install failed — the gateway-driven sandbox lesson won't work in the shell."
 fi
 if command -v openshell >/dev/null 2>&1; then
-  GW_URL="${OPENSHELL_CLI_ENDPOINT:-http://127.0.0.1:30808}"
+  GW_URL="${OPENSHELL_CLI_ENDPOINT:-$(oc -n openshell get route openshell-gateway -o jsonpath='https://{.spec.host}' 2>/dev/null || echo http://openshell.openshell.svc.cluster.local:8080)}"
   log "Registering OpenShell gateway for the workshop shell at ${GW_URL}"
   openshell gateway add "$GW_URL" --local --name cluster >/dev/null 2>&1 || true
   openshell gateway select cluster >/dev/null 2>&1 || true
@@ -67,7 +67,7 @@ Environment=PORT=${PORT}
 Environment=HOST=0.0.0.0
 Environment=HOME=${HOME}
 Environment=LAB_CWD=${REPO_ROOT}
-Environment=LAB_KUBECONFIG=$(kubeconfig_path)
+Environment=KUBECONFIG=${KUBECONFIG:-}
 ExecStart=$(command -v node) ${WEB_DIR}/server.mjs
 Restart=always
 RestartSec=3
@@ -82,4 +82,4 @@ sudo systemctl restart openclaw-workshop.service
 sleep 3
 code="$(curl -sS -m6 -o /dev/null -w '%{http_code}' "http://127.0.0.1:${PORT}/" 2>/dev/null || echo 000)"
 log "Workshop site: http://<host>:${PORT}/  (local check -> HTTP ${code})"
-log "Expose host port ${PORT} as a Brev tunnel; attendees open it and follow the lessons."
+log "Workshop site is serving on port ${PORT}."

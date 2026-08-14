@@ -1,0 +1,41 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: workshop
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: workshop
+spec:
+  {{- if .Values.global.clusterAppsDomain }}
+  host: workshop-{{ .Release.Namespace }}.{{ .Values.global.clusterAppsDomain }}
+  {{- end }}
+  to:
+    kind: Service
+    name: workshop
+    weight: 100
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: openclaw-ui
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: workshop
+spec:
+  {{- if .Values.global.clusterAppsDomain }}
+  host: openclaw-ui-{{ .Release.Namespace }}.{{ .Values.global.clusterAppsDomain }}
+  {{- end }}
+  to:
+    kind: Service
+    name: workshop
+    weight: 100
+  port:
+    targetPort: openclaw-ui
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
