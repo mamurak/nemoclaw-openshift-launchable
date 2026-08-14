@@ -59,7 +59,7 @@ kps:
         label: grafana_datasource
         searchNamespace: ALL
   nodeExporter:
-    enabled: true
+    enabled: false
   prometheus-node-exporter:
     fullnameOverride: kps-prometheus-node-exporter
     hostRootFsMount:
