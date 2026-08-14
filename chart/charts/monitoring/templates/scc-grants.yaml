@@ -40,3 +40,9 @@ subjects:
   - kind: ServiceAccount
     name: kps-alertmanager
     namespace: {{ .Release.Namespace }}
+  - kind: ServiceAccount
+    name: loki
+    namespace: {{ .Release.Namespace }}
+  - kind: ServiceAccount
+    name: tempo
+    namespace: {{ .Release.Namespace }}
