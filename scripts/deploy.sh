@@ -20,6 +20,11 @@ done
 ASB_VERSION="${AGENT_SANDBOX_VERSION:-v0.4.6}"
 oc apply -f "https://github.com/kubernetes-sigs/agent-sandbox/releases/download/${ASB_VERSION}/manifest.yaml"
 
+# Add Helm repos required by the monitoring subchart.
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts 2>/dev/null || true
+helm repo add grafana https://grafana.github.io/helm-charts 2>/dev/null || true
+helm repo update
+
 # Build subchart dependencies first (helm dependency build is NOT recursive).
 log "Building Helm chart dependencies"
 helm dependency build "$REPO_ROOT/chart/charts/openshell/"
