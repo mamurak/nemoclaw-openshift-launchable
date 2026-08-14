@@ -20,16 +20,31 @@ done
 ASB_VERSION="${AGENT_SANDBOX_VERSION:-v0.4.6}"
 oc apply -f "https://github.com/kubernetes-sigs/agent-sandbox/releases/download/${ASB_VERSION}/manifest.yaml"
 
-# Build and install the umbrella chart.
+# Build subchart dependencies first (helm dependency build is NOT recursive).
+log "Building Helm chart dependencies"
+helm dependency build "$REPO_ROOT/chart/charts/openshell/"
+helm dependency build "$REPO_ROOT/chart/charts/monitoring/"
 helm dependency build "$REPO_ROOT/chart/"
+
+# Install openshell + workshop (release: nemoclaw, namespace: openshell).
+log "Installing openshell + workshop"
 helm upgrade --install nemoclaw "$REPO_ROOT/chart/" \
   -n openshell \
   -f "$REPO_ROOT/chart/values.yaml" \
   --set global.clusterAppsDomain="$DOMAIN" \
+  --set monitoring.enabled=false \
   --set-string workshop.inference.apiKey="${NEMOCLAW_API_KEY:-}" \
   --set workshop.inference.baseUrl="${NEMOCLAW_INFERENCE_BASE_URL:-}" \
   --set workshop.inference.model="${NEMOCLAW_MODEL:-}" \
   --set openclaw.gatewayPassword="${OPENCLAW_GATEWAY_PASSWORD:-openclaw}" \
+  --wait --timeout 15m
+
+# Install monitoring in its own namespace (separate release so {{ .Release.Namespace }} = monitoring).
+log "Installing monitoring stack"
+helm upgrade --install nemoclaw-monitoring "$REPO_ROOT/chart/charts/monitoring/" \
+  -n monitoring \
+  --set global.clusterAppsDomain="$DOMAIN" \
+  --set kps.grafana.adminPassword="${MONITORING_GRAFANA_PASSWORD:-openclaw}" \
   --wait --timeout 15m
 
 # Deploy the demo app via Kustomize (NOT Helm-managed — incident route does apply/delete).

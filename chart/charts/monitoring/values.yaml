@@ -1,5 +1,7 @@
 # kube-prometheus-stack pass-through (via alias "kps")
+# fullnameOverride pins resource names so they don't change with the release name.
 kps:
+  fullnameOverride: kps
   crds:
     enabled: true
   prometheusOperator:
@@ -32,6 +34,7 @@ kps:
             resources: { requests: { storage: 1Gi } }
   grafana:
     enabled: true
+    fullnameOverride: kps-grafana
     defaultDashboardsEnabled: true
     grafana.ini:
       server:
@@ -70,6 +73,7 @@ kps:
 
 # Loki pass-through
 loki:
+  fullnameOverride: loki
   deploymentMode: SingleBinary
   loki:
     auth_enabled: false
@@ -104,6 +108,7 @@ loki:
 
 # Tempo pass-through
 tempo:
+  fullnameOverride: tempo
   tempo:
     storage:
       trace:

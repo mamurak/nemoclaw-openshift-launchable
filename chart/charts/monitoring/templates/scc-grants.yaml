@@ -23,14 +23,14 @@ subjects:
     name: default
     namespace: {{ .Release.Namespace }}
   - kind: ServiceAccount
-    name: {{ .Release.Name }}-kps-prometheus-node-exporter
+    name: kps-prometheus-node-exporter
     namespace: {{ .Release.Namespace }}
   - kind: ServiceAccount
-    name: {{ .Release.Name }}-kps-kube-prometheus-prometheus
+    name: kps-prometheus
     namespace: {{ .Release.Namespace }}
   - kind: ServiceAccount
-    name: {{ .Release.Name }}-kps-kube-prometheus-operator
+    name: kps-operator
     namespace: {{ .Release.Namespace }}
   - kind: ServiceAccount
-    name: {{ .Release.Name }}-kps-grafana
+    name: kps-grafana
     namespace: {{ .Release.Namespace }}
