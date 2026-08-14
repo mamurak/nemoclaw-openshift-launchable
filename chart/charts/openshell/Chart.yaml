@@ -5,7 +5,7 @@ type: application
 version: 0.1.0
 
 dependencies:
-  - name: openshell
+  - name: helm-chart
     version: "0.0.71"
     repository: "oci://ghcr.io/nvidia/openshell"
     alias: upstream
