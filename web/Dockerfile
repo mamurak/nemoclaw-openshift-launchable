@@ -32,7 +32,9 @@ COPY --from=builder /app/package.json ./
 COPY --from=builder /app/server.mjs ./
 COPY --from=builder /app/proto ./proto
 COPY --from=builder /app/lab ./lab
-COPY --from=builder /app/public ./public
+
+# node-pty's native addon must be compiled against the runtime's libs
+RUN cd node_modules/node-pty && npx node-gyp rebuild
 
 # Manifests needed by API routes and fleet operations
 COPY manifests/demo-app /app/manifests/demo-app
