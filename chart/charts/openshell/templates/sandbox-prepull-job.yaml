@@ -4,15 +4,12 @@ kind: Job
 metadata:
   name: sandbox-image-prepull
   namespace: {{ .Release.Namespace }}
-  annotations:
-    helm.sh/hook: post-install,post-upgrade
-    helm.sh/hook-delete-policy: before-hook-creation
 spec:
   backoffLimit: 2
   ttlSecondsAfterFinished: 600
   template:
     spec:
-      serviceAccountName: openshell-sandbox
+      serviceAccountName: default
       restartPolicy: Never
       containers:
         - name: prepull
