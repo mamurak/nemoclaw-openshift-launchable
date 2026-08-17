@@ -1,5 +1,6 @@
 # Wrapper values — upstream.* keys pass through to the vendored OpenShell chart.
 upstream:
+  fullnameOverride: openshell
   service:
     type: ClusterIP
     port: 8080

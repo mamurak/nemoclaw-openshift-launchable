@@ -23,6 +23,8 @@ spec:
             - containerPort: 3000
               name: http
           env:
+            - name: HOME
+              value: /tmp
             - name: NODE_ENV
               value: production
             - name: PORT
@@ -89,6 +91,8 @@ spec:
             - containerPort: 8789
               name: openclaw-ui
           env:
+            - name: HOME
+              value: /tmp
             - name: OPENSHELL_GATEWAY_ENDPOINT_URL
               value: {{ .Values.openshellGateway.endpointUrl | quote }}
             - name: OPENCLAW_AGENT_NAME
