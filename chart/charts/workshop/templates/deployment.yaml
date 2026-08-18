@@ -85,10 +85,10 @@ spec:
               openshell gateway add "$GW_URL" --local --name cluster 2>/dev/null || true
               openshell gateway select cluster 2>/dev/null || true
               while true; do
-                openshell forward start 0.0.0.0:8789 "${OPENCLAW_AGENT_NAME:-shifty}" 2>&1 || sleep 10
+                openshell forward start 0.0.0.0:30789 "${OPENCLAW_AGENT_NAME:-shifty}" 2>&1 || sleep 10
               done
           ports:
-            - containerPort: 8789
+            - containerPort: 30789
               name: openclaw-ui
           env:
             - name: HOME

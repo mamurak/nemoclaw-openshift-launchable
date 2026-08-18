@@ -1,4 +1,4 @@
-**OpenShell** (NVIDIA) is what makes "run an autonomous agent *safely*" real. The pitch in one line: **to be useful, agents need access; to be safe, they need Zero Trust** — and OpenShell is the runtime that gives you both. It's not a single process; it's a gateway plus a set of guardrails, sitting on an open-source Kubernetes primitive.
+**OpenShell** is what makes "run an autonomous agent *safely*" real. The pitch in one line: **to be useful, agents need access; to be safe, they need Zero Trust** — and OpenShell is the runtime that gives you both. It's not a single process; it's a gateway plus a set of guardrails, sitting on an open-source Kubernetes primitive.
 
 ## Inside the runtime
 
@@ -49,7 +49,7 @@ CPU-only, remote inference instead of a local model, and unauthenticated CLI ins
 
 ## The foundation: agent-sandbox (the SIG project)
 
-The bottom layer is community Kubernetes, not NVIDIA-specific: the `Sandbox` CRD (`agents.x-k8s.io`) and its controller come from **[kubernetes-sigs/agent-sandbox](https://github.com/kubernetes-sigs/agent-sandbox)**. OpenShell adds the gateway, supervisor, privacy router, and policy *on top*. That's why `oc get sandboxes -A` works with plain `oc` — they're standard Kubernetes objects.
+The bottom layer is community Kubernetes: the `Sandbox` CRD (`agents.x-k8s.io`) and its controller come from **[kubernetes-sigs/agent-sandbox](https://github.com/kubernetes-sigs/agent-sandbox)**. OpenShell adds the gateway, supervisor, privacy router, and policy *on top*. That's why `oc get sandboxes -A` works with plain `oc` — they're standard Kubernetes objects.
 
 <Callout type="note" title="Version detail that matters">
 We pin agent-sandbox to <strong>v0.4.6</strong> (the last <code>v1alpha1</code>-only release). The gateway (0.0.71) verifies a sandbox pod is owned by a <code>v1alpha1</code> Sandbox; agent-sandbox v0.5.0 switched to <code>v1beta1</code> ownerReferences, which the gateway rejects — so gateway-driven sandboxes would crash-loop. Pinning v0.4.6 is what makes <code>openshell sandbox create</code> reach <code>Ready</code>.
@@ -73,12 +73,6 @@ The gateway's OpenShift Route provides a stable hostname with TLS termination. T
 
 ```bash
 openshell --help
-```
-
-Run a full preflight (it checks the gateway, the compute driver, and the CRD are all healthy):
-
-```bash
-openshell doctor check
 ```
 
 See which gateways the CLI knows about — you're pointed at the one we registered, `cluster`:

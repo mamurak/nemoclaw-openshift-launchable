@@ -44,7 +44,7 @@ network_policies:
   tool-egress:
     name: tool-egress
     endpoints:
-      - host: kps-kube-prometheus-stack-prometheus.monitoring.svc.cluster.local
+      - host: kps-prometheus.monitoring.svc.cluster.local
         port: 9090
         access: full
     binaries:

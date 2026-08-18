@@ -7,7 +7,7 @@ You don't want to repeat *Create Your Agent* → *Give It a Brain* → *Identity
 ```text
 # name      backend(host:port, or "-")                              skill(@scope/name, or "-")
 logs        loki.monitoring.svc.cluster.local:3100                  -
-metrics     kps-kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090   -
+metrics     kps-prometheus.monitoring.svc.cluster.local:9090   -
 traces      tempo.monitoring.svc.cluster.local:3200                 -
 events      loki.monitoring.svc.cluster.local:3100                  -
 analyst     -                                                       -
@@ -84,7 +84,7 @@ network_policies:
   in-cluster-registry: { … }                 # every agent: install skills from your registry
   tool-egress:
     name: tool-egress
-    endpoints: [ { host: kps-kube-prometheus-stack-prometheus.monitoring.svc.cluster.local, port: 9090, access: full } ]
+    endpoints: [ { host: kps-prometheus.monitoring.svc.cluster.local, port: 9090, access: full } ]
     binaries: [ { path: /usr/bin/node }, { path: /usr/bin/curl } ]
 ```
 

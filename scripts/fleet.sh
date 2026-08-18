@@ -5,7 +5,7 @@
 #     name : backend            # backend = host:port the agent may reach, or "-" for none
 #
 # e.g.   logs    : loki.monitoring.svc.cluster.local:3100
-#        metrics : kps-kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090
+#        metrics : kps-prometheus.monitoring.svc.cluster.local:9090
 #        traces  : tempo.monitoring.svc.cluster.local:3200
 #        writer  : -
 #

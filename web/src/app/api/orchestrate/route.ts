@@ -17,7 +17,7 @@ const FLEET = (process.env.FLEET || "logs,metrics,traces,events,analyst").split(
 // The agent runs it (real data from its real backend, via curl under its egress policy) and
 // interprets the result; the writer synthesizes. Backends are env-overridable.
 const NS = process.env.INCIDENT_NS || "demo";
-const PROM = process.env.PROM_HOST || "kps-kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090";
+const PROM = process.env.PROM_HOST || "kps-prometheus.monitoring.svc.cluster.local:9090";
 const LOKI = process.env.LOKI_HOST || "loki.monitoring.svc.cluster.local:3100";
 const TEMPO = process.env.TEMPO_HOST || "tempo.monitoring.svc.cluster.local:3200";
 const TQ = "node /sandbox/.agents/skills/cluster-telemetry/tq.js";

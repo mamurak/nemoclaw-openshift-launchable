@@ -1,8 +1,8 @@
 Your agent needs a **brain** — somewhere to send its thinking. There's no GPU on this box, so we use a **remote, OpenAI-compatible inference endpoint**. You provide three things:
 
-- **Base URL** — the endpoint, ending in `/v1` (e.g. `https://integrate.api.nvidia.com/v1`)
-- **Model** — the model id to use (e.g. `nvidia/llama-3.3-nemotron-super-49b-v1`)
-- **API key** — your provider key (e.g. an `nvapi-…` key from [build.nvidia.com](https://build.nvidia.com))
+- **Base URL** — the endpoint, ending in `/v1` (e.g. `https://api.openai.com/v1`)
+- **Model** — the model id to use (e.g. `gpt-4o`)
+- **API key** — your provider key (e.g. an `sk-…` key from your provider's dashboard)
 
 <Callout type="note" title="The privacy router — why your key never enters the agent">
 We don't paste the key into the agent. Instead we register the endpoint + key with the <strong>gateway</strong> as a <em>provider</em>, then point the gateway's inference route at it. Your agent later sends its thinking to a virtual host, <code>https://inference.local</code>; the supervisor intercepts that <em>before</em> policy is even evaluated and routes it to the gateway, which injects the real key and calls upstream. So the agent <strong>never holds your key</strong>, and the real inference host <strong>never needs an entry in the agent's egress policy</strong>. That's the OpenShell privacy router.
@@ -20,9 +20,9 @@ nano .env        # or: vi .env
 Set these three lines (replace the values with your own):
 
 ```bash
-NEMOCLAW_INFERENCE_BASE_URL=https://integrate.api.nvidia.com/v1
-NEMOCLAW_MODEL=nvidia/llama-3.3-nemotron-super-49b-v1
-NEMOCLAW_API_KEY=nvapi-your-key-here
+NEMOCLAW_INFERENCE_BASE_URL=https://api.example.com/v1
+NEMOCLAW_MODEL=your-model-id
+NEMOCLAW_API_KEY=your-api-key-here
 ```
 
 Save and exit (in `nano`: <kbd>Ctrl-O</kbd>, <kbd>Enter</kbd>, <kbd>Ctrl-X</kbd>).

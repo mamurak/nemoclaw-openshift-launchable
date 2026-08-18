@@ -29,7 +29,7 @@ const COMPONENTS: Comp[] = [
     what: <>Agents can spawn focused sub-agents (a recon agent, an incident responder) — each its own sandbox with its own identity and policy.</>,
     k8s: <>More <code>Sandbox</code> CRs → more Pods, each governed by the same gateway. <code>oc get sandboxes -A</code> shows the whole fleet.</> },
   { id: "tools", label: "Accelerated Tooling", sub: "API · CLI · MCP", color: CYAN, lane: "agent",
-    what: <>The capabilities the agent reaches <em>through the guardrail</em>: filesystem, search, NVIDIA Omniverse/CAD, a local model — via API, CLI, or MCP servers.</>,
+    what: <>The capabilities the agent reaches <em>through the guardrail</em>: filesystem, search, Omniverse/CAD, a local model — via API, CLI, or MCP servers.</>,
     k8s: <>In-cluster Services (e.g. the Kubernetes API, Prometheus) and external endpoints, each only reachable if the sandbox's <em>policy</em> allows that binary→host path.</> },
 
   { id: "policy", label: "Policy Engine + Validator", sub: "deny-by-default", color: AMBER, lane: "guard",
@@ -82,7 +82,7 @@ export function OpenShellRuntime() {
 
       {/* the OpenShell box: two lanes */}
       <div className="rounded-xl border-2 p-3" style={{ borderColor: NV }}>
-        <div className="mb-2 text-[11px] font-bold" style={{ color: NV }}>NVIDIA OpenShell</div>
+        <div className="mb-2 text-[11px] font-bold" style={{ color: NV }}>OpenShell</div>
         <div className="mb-1 text-[10px] uppercase tracking-wide text-[var(--color-fg-mut)]">Agent path</div>
         <div className="flex flex-wrap items-stretch gap-2">
           {lane("agent").map((c, i) => (

@@ -1,4 +1,4 @@
-image: quay.io/mmurakam/nemoclaw-workshop:v0.1.11
+image: quay.io/mmurakam/nemoclaw-workshop:v0.1.14
 replicas: 1
 
 inference:

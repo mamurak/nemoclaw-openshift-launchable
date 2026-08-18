@@ -68,6 +68,7 @@ spec:
     spec:
       securityContext:
         runAsNonRoot: true
+        fsGroup: 65533
       containers:
         - name: verdaccio
           image: verdaccio/verdaccio:6

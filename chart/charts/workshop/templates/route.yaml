@@ -5,6 +5,8 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     app.kubernetes.io/name: workshop
+  annotations:
+    haproxy.router.openshift.io/timeout: 300s
 spec:
   {{- if .Values.global.clusterAppsDomain }}
   host: workshop-{{ .Release.Namespace }}.{{ .Values.global.clusterAppsDomain }}

@@ -2,7 +2,7 @@ Where to go deeper, and the key links.
 
 ## The toolbar (top-right of every page)
 
-Three live tools sit in the header, next to the Red Hat / NVIDIA chips:
+Three live tools sit in the header:
 
 - **Live** → [Live OpenShell](/learn/live). Reads your gateway straight from the cluster: gateway health + version, the **sandbox fleet**, the **inference route** (active provider + model, key names only), and — click any sandbox — its **Logs / audit**, **Policy decisions** (every egress attempt the policy *allowed* or *denied*, color-coded with the host, binary, rule, engine, and denial reason), and effective **Policy** (full YAML). Auto-refreshes; served read-only via `/api/openshell`.
 - **Approvals** → [/approvals](/approvals). Two human-in-the-loop inboxes, with a live pending-count badge:
@@ -15,9 +15,8 @@ Three live tools sit in the header, next to the Red Hat / NVIDIA chips:
 
 ## The stack
 - **Red Hat OpenShift** — docs.openshift.com
-- **NVIDIA OpenShell** — the agent sandbox runtime & control plane
+- **OpenShell** — the agent sandbox runtime & control plane
 - **OpenClaw** — the agent & its control UI; `openclaw --help`, docs.openclaw.ai
-- **build.nvidia.com** — OpenAI-compatible model endpoints (NIM)
 
 ## Concepts worth a read
 - OpenShift RBAC, Security Context Constraints, NetworkPolicy.
@@ -31,5 +30,5 @@ Three live tools sit in the header, next to the Red Hat / NVIDIA chips:
 Everything you deployed is scripted in the launchable repo — `scripts/` (the phases), `manifests/` (OpenShell, OpenClaw, console), `helm/`, and this site under `web/`. Read it, fork it, build your hackathon project on top.
 
 <Callout type="rh" title="Thanks for joining us">
-Built for WeAreDevelopers 2026 by <strong>Red Hat</strong> and <strong>NVIDIA</strong>. Now go give your lobster a superpower. 🦞
+Built by <strong>Red Hat</strong> and <strong>Nvidia</strong>. Now go give your lobster a superpower. 🦞
 </Callout>

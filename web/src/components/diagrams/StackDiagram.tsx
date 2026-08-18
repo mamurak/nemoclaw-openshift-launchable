@@ -34,11 +34,11 @@ export function StackDiagram() {
         <rect x={0} y={0} width={W} height={H} fill={C.bg} />
         <Layer y={28} h={68} fill={C.redTint} stroke={C.redhat} n={1} title="OpenShift cluster" sub="Helm-deployed · OpenShift APIs & oc · Routes for external access" badge="Red Hat" badgeColor={C.redhat} />
         <Arrow y={96} />
-        <Layer y={112} h={68} fill={C.lav} stroke={C.auth} n={2} title="OpenShell gateway" sub="sandbox control plane · watches agent-sandbox CRD" badge="NVIDIA" badgeColor={C.nvidia} />
+        <Layer y={112} h={68} fill={C.lav} stroke={C.auth} n={2} title="OpenShell gateway" sub="sandbox control plane · watches agent-sandbox CRD" />
         <Arrow y={180} />
         <Layer y={196} h={76} fill={C.greenTint} stroke={C.nvidia} n={3} title={'OpenClaw sandbox — “Shifty” 🦞'} sub="agent + control UI (sandbox-internal :30789) · password auth · device pairing" />
         <Arrow y={272} />
-        <Layer y={288} h={62} fill={C.data} stroke={C.green} n={4} title="Remote inference endpoint" sub="OpenAI-compatible model (NVIDIA NIM) — agent calls out" badge="NVIDIA" badgeColor={C.nvidia} />
+        <Layer y={288} h={62} fill={C.data} stroke={C.green} n={4} title="Remote inference endpoint" sub="OpenAI-compatible model — agent calls out" />
         <rect x={70} y={370} width={W - 140} height={78} rx={12} fill={C.white} stroke={C.border} strokeWidth={1.4} strokeDasharray="6 4" />
         <text x={W / 2} y={392} fontSize={12.5} fill={C.ink} textAnchor="middle" fontWeight={700}>How you reach it (OpenShift Routes)</text>
         <g fontSize={11} fill={C.sub} textAnchor="middle">

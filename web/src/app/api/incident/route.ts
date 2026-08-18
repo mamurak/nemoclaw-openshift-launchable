@@ -11,7 +11,7 @@ const KUBECONFIG = process.env.KUBECONFIG || "";
 const env = { ...process.env, ...(KUBECONFIG ? { KUBECONFIG } : {}), PATH: `${process.env.PATH ?? ""}:/usr/local/bin:/usr/bin` };
 const NS = "demo", APP = "shop-app";
 const KDIR = process.env.DEMO_APP_MANIFESTS || "/app/manifests/demo-app";
-const PROM = process.env.PROM_HOST || "kps-kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090";
+const PROM = process.env.PROM_HOST || "kps-prometheus.monitoring.svc.cluster.local:9090";
 
 function kubectl(args: string[], timeoutMs = 60_000): Promise<{ code: number | null; out: string }> {
   return new Promise((resolve) => {

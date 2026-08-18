@@ -23,7 +23,7 @@ rules:
     resources: ["pods", "services", "configmaps"]
     verbs: ["get", "list", "watch", "create", "patch", "delete"]
   - apiGroups: ["apps"]
-    resources: ["deployments"]
+    resources: ["deployments", "deployments/scale"]
     verbs: ["get", "list", "watch", "create", "patch", "delete", "update"]
   - apiGroups: ["monitoring.coreos.com"]
     resources: ["servicemonitors"]
