@@ -13,7 +13,7 @@ RUN npm run build
 FROM node:20-bookworm-slim
 
 RUN apt-get update && \
-    apt-get install -y bash curl jq python3 make g++ ca-certificates && \
+    apt-get install -y bash curl jq python3 make g++ ca-certificates openssl openssh-client && \
     rm -rf /var/lib/apt/lists/*
 
 # Install oc CLI
@@ -21,8 +21,11 @@ RUN curl -sL https://mirror.openshift.com/pub/openshift-v4/clients/ocp/stable/op
     | tar xzf - -C /usr/local/bin oc kubectl && \
     chmod +x /usr/local/bin/oc /usr/local/bin/kubectl
 
-# Install openshell CLI
-RUN curl -fsSL https://raw.githubusercontent.com/nvidia/openshell/main/install.sh | bash
+# Install openshell CLI — pin to gateway version to avoid protocol mismatches
+RUN curl -fsSL https://raw.githubusercontent.com/nvidia/openshell/main/install.sh -o /tmp/install-openshell.sh && \
+    OPENSHELL_VERSION=v0.0.71 bash /tmp/install-openshell.sh && \
+    rm /tmp/install-openshell.sh && \
+    cp /root/.openshell/bin/openshell /usr/local/bin/openshell 2>/dev/null || true
 
 WORKDIR /app
 
@@ -41,9 +44,11 @@ COPY manifests/demo-app /app/manifests/demo-app
 COPY manifests/openclaw /app/manifests/openclaw
 COPY policies /app/policies
 COPY scripts/fleet.sh scripts/lib /app/scripts/
+COPY fleet.txt /app/fleet.txt
 
 COPY web/entrypoint.sh /app/entrypoint.sh
-RUN chmod +x /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh && \
+    chmod g+w /app
 
 ENV NODE_ENV=production \
     PORT=3000 \

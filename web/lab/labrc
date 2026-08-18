@@ -33,10 +33,12 @@ expose-agent() {
   fi
 }
 
-PS1='\[\e[1;32m\]oclaw-lab\[\e[0m\]:\[\e[1;34m\]\w\[\e[0m\]$ '
+if [[ $- == *i* ]]; then
+  PS1='\[\e[1;32m\]oclaw-lab\[\e[0m\]:\[\e[1;34m\]\w\[\e[0m\]$ '
 
-echo -e "\e[1;32m🦞 OpenClaw workshop lab shell\e[0m"
-echo -e "  \e[2mcluster:\e[0m  oc get pods -A"
-echo -e "  \e[2magent:\e[0m    \e[1;33msbox-openclaw\e[0m devices list   (lab helper → runs openclaw INSIDE sandbox 'shifty')"
-echo -e "  \e[2mgateway:\e[0m  openshell sandbox list       (create sandboxes via the OpenShell gateway)"
-echo
+  echo -e "\e[1;32m🦞 OpenClaw workshop lab shell\e[0m"
+  echo -e "  \e[2mcluster:\e[0m  oc get pods -A"
+  echo -e "  \e[2magent:\e[0m    \e[1;33msbox-openclaw\e[0m devices list   (lab helper → runs openclaw INSIDE sandbox 'shifty')"
+  echo -e "  \e[2mgateway:\e[0m  openshell sandbox list       (create sandboxes via the OpenShift gateway)"
+  echo
+fi

@@ -31,7 +31,7 @@ function runCheck(cmd) {
   return new Promise((resolve) => {
     const p = spawn("/bin/bash", ["-lc", cmd], {
       cwd: LAB_CWD,
-      env: { ...process.env, ...(LAB_KUBECONFIG ? { KUBECONFIG: LAB_KUBECONFIG } : {}), LAB_CWD },
+      env: { ...process.env, ...(LAB_KUBECONFIG ? { KUBECONFIG: LAB_KUBECONFIG } : {}), LAB_CWD, BASH_ENV: LAB_RC },
       timeout: 25000,
     });
     let out = "", errs = "";

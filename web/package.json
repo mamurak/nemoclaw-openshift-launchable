@@ -6,7 +6,10 @@
     "dev": "node server.mjs",
     "build": "next build",
     "start": "NODE_ENV=production node server.mjs",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "playwright test --project=smoke",
+    "test:e2e": "E2E_BASE_URL=https://workshop-openshell.apps.cluster-mqzr4.mqzr4.sandbox1664.opentlc.com playwright test --project=e2e",
+    "test:ui": "playwright test --ui"
   },
   "dependencies": {
     "@grpc/grpc-js": "^1.12.5",
@@ -28,6 +31,7 @@
     "ws": "^8.21.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

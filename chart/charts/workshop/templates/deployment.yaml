@@ -34,7 +34,7 @@ spec:
             - name: LAB_CWD
               value: /app
             - name: OPENSHELL_GATEWAY_ENDPOINT
-              value: {{ .Values.openshellGateway.endpointUrl | replace "http://" "" | replace "https://" "" | quote }}
+              value: {{ .Values.openshellGateway.endpointUrl | quote }}
             - name: OPENSHELL_GATEWAY_ENDPOINT_URL
               value: {{ .Values.openshellGateway.endpointUrl | quote }}
             - name: GRAFANA_ORIGIN
