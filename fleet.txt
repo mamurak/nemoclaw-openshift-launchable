@@ -8,7 +8,7 @@
 #             using node/curl). Publish a skill via Part V, then put @workshop/<name> here.
 #
 logs      loki.monitoring.svc.cluster.local:3100                              -
-metrics   kps-kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090   -
+metrics   kps-prometheus.monitoring.svc.cluster.local:9090   -
 traces    tempo.monitoring.svc.cluster.local:3200                             -
 events    loki.monitoring.svc.cluster.local:3100                              -
 analyst   -                                                                   -

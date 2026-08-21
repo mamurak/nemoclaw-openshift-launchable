@@ -69,6 +69,7 @@ So you'll **create a provider** (Step 4), then **point the route at it** (Step 5
 Hand the endpoint + key to the gateway. From here on *the gateway* holds them — not you, and not the agent:
 
 ```bash
+openshell provider delete default 2>/dev/null || true
 openshell provider create --name default --type openai \
   --credential OPENAI_API_KEY="$NEMOCLAW_API_KEY" \
   --config OPENAI_BASE_URL="$NEMOCLAW_INFERENCE_BASE_URL"
