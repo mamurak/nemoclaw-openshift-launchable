@@ -45,6 +45,8 @@ An instrumented shop application runs on OpenShift with a continuous load genera
 
 Five sealed AI agents, each running in its own sandbox pod with a deny-by-default egress policy, investigate the incident in parallel:
 
+![Fleet orchestration flow](docs/fleet-orchestration.png)
+
 | Agent | Backend | What it finds |
 |-------|---------|---------------|
 | **Scout** (logs) | Loki | `"checkout failed: payment call failed"` |
@@ -57,6 +59,10 @@ Each specialist can only reach its assigned telemetry backend — it cannot touc
 
 **Outcome:** The analyst concludes the root cause is a dependency outage (`payments` scaled to zero) and recommends `kubectl scale deploy/payments --replicas=1`. The human reviews, approves, and applies the fix. The error rate drops to zero. The agents never modify the cluster — they only read telemetry.
 
+The instrumented workload produces all three signal types (metrics, logs, traces); each specialist agent reads exactly one backend:
+
+![Demo architecture](docs/demo-architecture.png)
+
 This project deploys the full stack needed to run this scenario on any existing OpenShift cluster using a single Helm umbrella chart:
 
 - **OpenShell gateway** — the agent control plane, managing sandboxed agent pods via the `agent-sandbox` CRD
@@ -67,6 +73,8 @@ This project deploys the full stack needed to run this scenario on any existing 
 All inference is remote (OpenAI-compatible endpoint) — no GPU is required on the cluster.
 
 ### Architecture Diagram
+
+![Stack diagram](docs/stack-diagram.png)
 
 ```
 OpenShift cluster
@@ -286,6 +294,10 @@ oc delete -f "https://github.com/kubernetes-sigs/agent-sandbox/releases/download
 The OpenClaw agent runs under a **deny-by-default policy** at two layers:
 - **L4 (network):** Kubernetes `NetworkPolicy` — allows DNS + intra-cluster + external HTTPS only
 - **L7 (application):** OpenShell's per-binary/method/path schema in [`policies/`](policies/)
+
+![Security layers](docs/security-layers.png)
+
+![Policy explorer](docs/policy-explorer.png)
 
 ### Helm Chart Structure
 
