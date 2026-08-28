@@ -148,7 +148,7 @@ Before deploying, ensure you have:
 1. **Clone the repository:**
 
 ```bash
-git clone https://github.com/ansjindal/nemoclaw-openshift-launchable.git
+git clone https://github.com/rh-ai-quickstart/aiops-sandboxed-agent-fleet.git
 cd nemoclaw-openshift-launchable
 ```
 
