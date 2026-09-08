@@ -14,4 +14,9 @@ openshellGateway:
   endpointUrl: "http://openshell.openshell.svc.cluster.local:8080"
 
 grafana:
-  origin: "http://kps-grafana.monitoring.svc.cluster.local:80"
+  origin: "http://grafana.monitoring.svc.cluster.local:80"
+
+monitoring:
+  promHost: "https://thanos-querier.openshift-monitoring.svc.cluster.local:9091"
+  lokiHost: "https://logging-loki-gateway-http.openshift-logging.svc.cluster.local:8080"
+  tempoHost: "https://tempo-tempostack-gateway.observability-hub.svc.cluster.local:8080"

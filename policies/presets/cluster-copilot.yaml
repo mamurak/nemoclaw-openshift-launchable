@@ -89,14 +89,11 @@ network_policies:
       - { path: /bin/sh }
       - { path: /bin/bash }
 
-  # --- in-cluster Prometheus (query API) — only reachable if the optional ---
-  # --- monitoring phase is deployed. Host matches the kube-prometheus-stack svc. ---
+  # --- Thanos Querier (PromQL API) — OpenShift Cluster Monitoring Operator ---
   prometheus:
     name: prometheus
-    # Plaintext HTTP on :9090 — a simple host+port allow (L4). Read-only is inherent
-    # to the Prometheus query API. Only reachable if the optional monitoring phase ran.
     endpoints:
-      - { host: kube-prometheus-stack-prometheus.monitoring.svc.cluster.local, port: 9090 }
+      - { host: thanos-querier.openshift-monitoring.svc.cluster.local, port: 9091 }
     binaries:
       - { path: /usr/bin/node }
       - { path: /usr/local/bin/node }

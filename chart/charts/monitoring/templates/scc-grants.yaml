@@ -1,33 +1,25 @@
-{{- /*
-SCC grants for the monitoring namespace — least-privilege per component.
-
-Only node-exporter needs elevated access (hostPath + hostPort + hostPID).
-All other components have their UIDs/GIDs nulled so OpenShift assigns from
-the namespace range, letting them run under the default restricted SCC.
-*/ -}}
-{{- if (index .Values "kps" "nodeExporter" "enabled") }}
+{{- /* SCC grant for the Grafana service account — needs nonroot to run as a specific UID. */ -}}
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: monitoring-scc-node-exporter
+  name: monitoring-scc-nonroot
   namespace: {{ .Release.Namespace }}
 rules:
   - apiGroups: ["security.openshift.io"]
     resources: ["securitycontextconstraints"]
-    resourceNames: ["privileged"]
+    resourceNames: ["nonroot"]
     verbs: ["use"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: monitoring-scc-node-exporter
+  name: monitoring-scc-nonroot
   namespace: {{ .Release.Namespace }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: monitoring-scc-node-exporter
+  name: monitoring-scc-nonroot
 subjects:
   - kind: ServiceAccount
-    name: kps-prometheus-node-exporter
+    name: grafana
     namespace: {{ .Release.Namespace }}
-{{- end }}

@@ -12,6 +12,9 @@ log "Preflight checks"
 # --- required CLI tools ---
 require_cmd oc
 require_cmd helm
+require_cmd yq
+require_cmd jq
+require_cmd envsubst
 
 # --- OpenShift login ---
 if oc whoami >/dev/null 2>&1; then

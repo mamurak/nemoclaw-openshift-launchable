@@ -1,24 +1,5 @@
 {{- if .Values.eventExporter.enabled }}
 apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: event-exporter
-  namespace: {{ .Release.Namespace }}
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: {{ .Release.Namespace }}-event-exporter
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: view
-subjects:
-  - kind: ServiceAccount
-    name: event-exporter
-    namespace: {{ .Release.Namespace }}
----
-apiVersion: v1
 kind: ConfigMap
 metadata:
   name: event-exporter-cfg
@@ -34,9 +15,13 @@ data:
     receivers:
       - name: loki
         loki:
-          url: http://loki.{{ .Release.Namespace }}.svc.cluster.local:3100/loki/api/v1/push
+          url: {{ .Values.endpoints.loki.url }}{{ .Values.endpoints.loki.infrastructurePath }}/loki/api/v1/push
           streamLabels:
             job: kubernetes-event-exporter
+          headers:
+            Authorization: "${MONITORING_TOKEN}"
+          tlsConfig:
+            insecureSkipVerify: true
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -52,14 +37,18 @@ spec:
     metadata:
       labels: { app: event-exporter }
     spec:
-      serviceAccountName: event-exporter
+      serviceAccountName: monitoring-reader
       securityContext:
         runAsNonRoot: true
         seccompProfile: { type: RuntimeDefault }
       containers:
         - name: event-exporter
           image: ghcr.io/resmoio/kubernetes-event-exporter:v1.7
-          args: ["-conf=/data/config.yaml"]
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              export MONITORING_TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
+              exec /kubernetes-event-exporter -conf=/data/config.yaml
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true

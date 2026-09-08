@@ -24,7 +24,7 @@ spec:
           image: node:22-alpine
           command: ["node", "/app/app.js"]
           env:
-            - { name: OTEL_EXPORTER_OTLP_ENDPOINT, value: "http://tempo.monitoring.svc.cluster.local:4318" }
+            - { name: OTEL_EXPORTER_OTLP_ENDPOINT, value: "http://otel-collector-collector.observability-hub.svc.cluster.local:4318" }
             - { name: OTEL_SERVICE_NAME, value: "shop" }
           ports:
             - { name: http, containerPort: 8080 }
@@ -53,13 +53,13 @@ spec:
   ports:
     - { name: http, port: 8080, targetPort: 8080 }
 ---
-# Prometheus scrapes shop-app's /metrics (the kube-prometheus-stack selects all ServiceMonitors).
+# User Workload Monitoring scrapes shop-app's /metrics (UWM discovers all ServiceMonitors in user namespaces).
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
   name: shop-app
   namespace: demo
-  labels: { app: shop-app, release: kps }
+  labels: { app: shop-app }
 spec:
   selector:
     matchLabels: { app: shop-app }

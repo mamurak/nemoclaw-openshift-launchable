@@ -44,8 +44,8 @@ network_policies:
   tool-egress:
     name: tool-egress
     endpoints:
-      - host: tempo.monitoring.svc.cluster.local
-        port: 3200
+      - host: tempo-tempostack-gateway.observability-hub.svc.cluster.local
+        port: 8080
         access: full
     binaries:
       - path: /usr/bin/node

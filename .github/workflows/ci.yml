@@ -36,10 +36,12 @@ jobs:
           shellcheck --severity=error --external-sources
           scripts/deploy.sh
           scripts/00-preflight.sh
+          scripts/15-observability.sh
           scripts/45-openclaw.sh
-          scripts/80-monitoring.sh
           scripts/fleet.sh
           scripts/lib/common.sh
+          scripts/lib/operator-manager.sh
+          scripts/lib/enable-uwm.sh
 
   yaml-syntax:
     name: YAML syntax
@@ -52,6 +54,7 @@ jobs:
           files = sorted(set(
               glob.glob("manifests/**/*.yaml", recursive=True)
               + glob.glob("policies/**/*.yaml", recursive=True)
+              + glob.glob("deploy/**/*.yaml", recursive=True)
               + glob.glob("helm/**/*.yaml", recursive=True)
               + glob.glob("chart/values.yaml")
               + glob.glob("chart/charts/*/values.yaml")

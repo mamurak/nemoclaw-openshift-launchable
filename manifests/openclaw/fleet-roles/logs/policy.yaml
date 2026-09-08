@@ -44,8 +44,8 @@ network_policies:
   tool-egress:
     name: tool-egress
     endpoints:
-      - host: loki.monitoring.svc.cluster.local
-        port: 3100
+      - host: logging-loki-gateway-http.openshift-logging.svc.cluster.local
+        port: 8080
         access: full
     binaries:
       - path: /usr/bin/node

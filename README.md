@@ -49,10 +49,10 @@ Five sealed AI agents, each running in its own sandbox pod with a deny-by-defaul
 
 | Agent | Backend | What it finds |
 |-------|---------|---------------|
-| **Scout** (logs) | Loki | `"checkout failed: payment call failed"` |
-| **Gauge** (metrics) | Prometheus | 5xx spike, request success rate drops to 0% |
-| **Trace** (traces) | Tempo | Failing `charge-payment` span in error traces |
-| **Probe** (events) | Loki (event-exporter) | `payments scaled to 0` Kubernetes event |
+| **Scout** (logs) | Loki Operator gateway | `"checkout failed: payment call failed"` |
+| **Gauge** (metrics) | Thanos Querier | 5xx spike, request success rate drops to 0% |
+| **Trace** (traces) | Tempo gateway | Failing `charge-payment` span in error traces |
+| **Probe** (events) | Loki Operator gateway (event-exporter) | `payments scaled to 0` Kubernetes event |
 | **Sage** (analyst) | None — zero egress | Synthesizes all findings into root cause + fix |
 
 Each specialist can only reach its assigned telemetry backend — it cannot touch the cluster API, other backends, or the internet. The analyst has no tools and no egress at all; it only reasons over the other agents' findings. A fixed orchestrator (no LLM "planning" step) dispatches one prescribed probe per specialist, collects results, and hands them to the analyst.
@@ -63,11 +63,11 @@ The instrumented workload produces all three signal types (metrics, logs, traces
 
 ![Demo architecture](docs/demo-architecture.png)
 
-This project deploys the full stack needed to run this scenario on any existing OpenShift cluster using a single Helm umbrella chart:
+This project deploys the full stack needed to run this scenario on any existing OpenShift cluster:
 
 - **OpenShell gateway** — the agent control plane, managing sandboxed agent pods via the `agent-sandbox` CRD
 - **OpenClaw agents** — sandboxed AI agents governed by deny-by-default network and API policies
-- **Observability stack** — Prometheus, Grafana, Loki, and Tempo for metrics, logs, and traces
+- **Observability stack** — OpenShift operator-based monitoring (Prometheus/Thanos Querier, Loki Operator, Tempo Operator, OTEL Collector) with standalone Grafana for dashboards
 - **Interactive workshop website** — a Next.js app with 30+ guided lessons and a live in-browser terminal that walks you through building the entire system from scratch
 
 All inference is remote (OpenAI-compatible endpoint) — no GPU is required on the cluster.
@@ -86,13 +86,20 @@ OpenShift cluster
   │    │    └─ OpenClaw Control UI on port 8789 (Route: openclaw-ui-openshell.<domain>)
   │    ├─ Verdaccio skill registry
   │    └─ OpenClaw agent sandbox pod (created after provisioning)
+  ├─ openshift-monitoring namespace (Cluster Monitoring Operator)
+  │    ├─ Prometheus (cluster + user workload monitoring)
+  │    ├─ Thanos Querier (federated PromQL API on port 9091)
+  │    └─ Alertmanager
+  ├─ openshift-logging namespace (Loki Operator + Cluster Logging)
+  │    ├─ LokiStack (multi-tenant log aggregation)
+  │    └─ ClusterLogForwarder (log collection)
+  ├─ observability-hub namespace
+  │    ├─ TempoStack (distributed tracing)
+  │    ├─ OTEL Collector (trace ingestion)
+  │    └─ MinIO (S3 backend for Loki + Tempo)
   ├─ monitoring namespace
-  │    ├─ Prometheus + Alertmanager (kube-prometheus-stack)
   │    ├─ Grafana (Route: grafana-monitoring.<domain>/grafana)
-  │    ├─ Loki (log aggregation)
-  │    ├─ Tempo (distributed tracing)
-  │    ├─ Event exporter → Loki
-  │    └─ Log shipper (Alloy) → Loki
+  │    └─ Event exporter → Loki
   └─ demo namespace
        └─ Instrumented shop app (Kustomize, deployed on demand)
 ```
@@ -119,7 +126,7 @@ Most lessons include a live in-browser terminal connected to the cluster for han
 
 **Cluster nodes:**
 - 2 worker nodes (or 3+ control-plane nodes with scheduling enabled)
-- 4 vCPU / 16 GiB memory per worker (for the monitoring stack + OpenShell + workshop)
+- 4 vCPU / 16 GiB memory per worker (for the observability stack + OpenShell + workshop)
 
 **No GPU required.** Inference is served by a remote endpoint.
 
@@ -130,7 +137,26 @@ Most lessons include a live in-browser terminal connected to the cluster for han
 | Red Hat OpenShift | 4.x | With `cluster-admin` access |
 | `oc` CLI | Matching cluster version | Logged in (`oc login`) |
 | `helm` CLI | 3.x | For chart installation |
+| `yq`, `jq`, `envsubst` | Any | Used by operator management scripts |
 | Remote inference endpoint | Any | OpenAI-compatible (`/v1/chat/completions`) |
+
+### Why cluster-admin access is required
+
+The deployment creates several cluster-scoped resources that only a `cluster-admin` can manage. Here is the full list:
+
+| Category | Resource | Why it's needed |
+|----------|----------|-----------------|
+| **CRDs** | `sandboxes.agents.x-k8s.io` (agent-sandbox v0.4.6) | The OpenShell gateway's Kubernetes compute driver watches this CRD to manage sandbox pod lifecycle. Without it the gateway enters a 404 watch loop and cannot create sandboxes. |
+| **Operators** | 5 OLM Subscriptions (Cluster Observability, OpenTelemetry, Tempo, Logging, Loki) | Installed via Operator Lifecycle Manager to provide the observability stack. Each operator creates its own CRDs and controllers. |
+| **Namespaces** | `openshell`, `monitoring`, `demo`, `observability-hub` | Created out-of-band (not Helm-managed) so that `helm uninstall` does not delete them and the non-Helm resources inside them. |
+| **Cluster config** | `cluster-monitoring-config` ConfigMap in `openshift-monitoring` | Enables User Workload Monitoring so Prometheus scrapes ServiceMonitors in user namespaces. |
+| **ClusterRoles** | `<namespace>-workshop` | Grants the workshop pod read access to pods, services, nodes, sandboxes, and routes across namespaces so it can render live cluster views and execute commands in sandbox pods. |
+| **ClusterRoleBindings** | `*-monitoring-view`, `*-grafana-monitoring-view`, `*-monitoring-reader-view` | Bind `cluster-monitoring-view` and `view` to the monitoring-reader and Grafana ServiceAccounts so they can query Thanos Querier, Loki gateway, and Tempo gateway. |
+| **ClusterRoles** | `openshell-node-reader` (upstream chart) | Lets the OpenShell gateway create `TokenReview` requests and read node information for sandbox scheduling. |
+| **SCC grants** | `privileged` SCC → `openshell-sandbox` SA | Sandbox pods need `CAP_SYS_ADMIN` and an Unconfined AppArmor profile because the supervisor performs network namespace mounts during sandbox setup. |
+| **SCC grants** | `nonroot` SCC → `grafana` SA | Grafana needs to run as a specific non-root UID that may differ from OpenShift's default namespace-range assignment. |
+
+**Cluster config read:** The deploy script also reads the cluster-scoped `ingresses.config/cluster` resource to auto-detect the `*.apps` domain for Route hostnames. You can skip this by setting `CLUSTER_APPS_DOMAIN` in `.env`.
 
 ## Deploy
 
@@ -141,7 +167,8 @@ Before deploying, ensure you have:
 1. Access to a Red Hat OpenShift 4.x cluster with `cluster-admin` privileges
 2. `oc` CLI installed and logged in to the cluster
 3. `helm` CLI (v3+) installed
-4. An OpenAI-compatible inference endpoint (e.g., [NVIDIA NIM](https://build.nvidia.com/), OpenAI, Azure OpenAI, or any `/v1/chat/completions` provider)
+4. `yq`, `jq`, and `envsubst` installed (used by operator management scripts)
+5. An OpenAI-compatible inference endpoint (e.g., [NVIDIA NIM](https://build.nvidia.com/), OpenAI, Azure OpenAI, or any `/v1/chat/completions` provider)
 
 ### Deployment
 
@@ -169,13 +196,14 @@ NEMOCLAW_API_KEY="nvapi-..."                                        # your API k
 
 The script will:
 - Verify you are logged in to OpenShift and have the required CLI tools
+- Deploy the OpenShift observability stack (5 operators + MinIO + TempoStack + LokiStack + OTEL Collector)
 - Create namespaces (`openshell`, `monitoring`, `demo`) out-of-band
 - Apply the agent-sandbox CRD (pinned to v0.4.6)
-- Add required Helm repositories (prometheus-community, grafana)
+- Add the Grafana Helm repository
 - Build chart dependencies (recursive — subcharts first, then umbrella)
 - Install the **openshell + workshop** release in the `openshell` namespace
-- Install the **monitoring** release in the `monitoring` namespace
-- Optionally deploy the demo app via Kustomize
+- Install the **monitoring** release (Grafana + event-exporter) in the `monitoring` namespace
+- Optionally deploy the demo app via Kustomize and bring up the agent fleet
 
 4. **Access the workshop:**
 
@@ -219,6 +247,8 @@ Once deployed, verify everything is running:
 # Check all pods are Running
 oc get pods -n openshell
 oc get pods -n monitoring
+oc get pods -n observability-hub
+oc get pods -n openshift-logging
 
 # Verify the workshop is reachable
 curl -sk -o /dev/null -w '%{http_code}\n' \
@@ -256,24 +286,66 @@ echo "https://openclaw-ui-openshell.$(oc get ingresses.config/cluster -o jsonpat
 
 ### Delete
 
-To remove the entire deployment:
+To remove the entire deployment, run these steps in order. Each step is independent — if you only want to remove part of the stack, run only the relevant commands.
+
+**Step 1: Remove Helm releases (openshell, workshop, Grafana, event-exporter)**
 
 ```bash
-# Remove Helm releases
 helm uninstall nemoclaw -n openshell
 helm uninstall nemoclaw-monitoring -n monitoring
+```
 
-# Remove the demo app
+**Step 2: Remove the demo app**
+
+```bash
 oc delete -k manifests/demo-app/ --ignore-not-found
+```
 
-# Remove namespaces
-for ns in openshell monitoring demo; do
+**Step 3: Remove the observability Helm releases (OTEL Collector, TempoStack, LokiStack, MinIO)**
+
+These were deployed by `scripts/15-observability.sh` into the `observability-hub` and `openshift-logging` namespaces:
+
+```bash
+helm uninstall otel -n observability-hub
+helm uninstall tempo -n observability-hub
+helm uninstall loki -n openshift-logging
+helm uninstall minio -n observability-hub
+```
+
+**Step 4: Remove workshop-created namespaces**
+
+```bash
+for ns in openshell monitoring demo observability-hub; do
   oc delete namespace "$ns" --ignore-not-found
 done
+```
 
-# Remove the cluster-scoped CRD (optional — only if no other users depend on it)
+> **Note:** Do not delete `openshift-monitoring` or `openshift-logging` — these are shared OpenShift platform namespaces. The `helm uninstall loki` command in Step 3 removes the LokiStack and ClusterLogForwarder resources from `openshift-logging` without affecting the namespace itself.
+
+**Step 5: Remove the agent-sandbox CRD (optional)**
+
+Only remove this if no other users or projects depend on it:
+
+```bash
 oc delete -f "https://github.com/kubernetes-sigs/agent-sandbox/releases/download/v0.4.6/manifest.yaml" --ignore-not-found
 ```
+
+**Step 6: Remove the observability operators (optional)**
+
+Only remove these if no other projects on the cluster depend on them. Each operator is uninstalled individually using the operator manager script:
+
+```bash
+HERE="$(pwd)/scripts/lib"
+
+# Uninstall in reverse dependency order
+"$HERE/operator-manager.sh" -u otel -n openshift-opentelemetry-operator
+"$HERE/operator-manager.sh" -u tempo -n openshift-tempo-operator
+"$HERE/operator-manager.sh" -u logging -n openshift-logging
+"$HERE/operator-manager.sh" -u loki -n openshift-operators-redhat
+"$HERE/operator-manager.sh" -u observability -n openshift-cluster-observability-operator
+```
+
+> **Note:** Operator uninstall preserves CRDs by design (OLM best practice). To fully remove operator CRDs, delete them manually with `oc delete crd <crd-name>` — but be aware this cascading-deletes all custom resources of that type cluster-wide.
 
 ## Technical Details
 
@@ -303,22 +375,27 @@ chart/
 └── charts/
     ├── openshell/       # wraps oci://ghcr.io/nvidia/openshell/helm-chart (v0.0.71)
     │   └── templates/   # SCC grants, Route (edge TLS + HTTP/2), sandbox prepull, registry
-    ├── monitoring/      # wraps kube-prometheus-stack + Loki + Tempo
-    │   └── templates/   # SCC grants, Grafana Route, datasources, event exporter, log shipper
+    ├── monitoring/      # standalone Grafana + event-exporter
+    │   └── templates/   # Grafana Route, datasources (Thanos/Loki/Tempo), RBAC, event exporter
     └── workshop/        # containerized Next.js web app
         └── templates/   # Deployment (+ openclaw-forward sidecar), Service, Routes, RBAC
 ```
+
+The observability backends (TempoStack, LokiStack, OTEL Collector, MinIO) are deployed separately via Helm charts in `deploy/observability/` — not as subcharts — because they target different namespaces (`observability-hub`, `openshift-logging`).
 
 The monitoring subchart is deployed as a **separate Helm release** in the `monitoring` namespace so that `{{ .Release.Namespace }}` resolves correctly for all monitoring resources.
 
 ### Key Design Decisions
 
+- **OpenShift operator-based monitoring** — Prometheus, Loki, and Tempo are managed by Red Hat operators (Cluster Monitoring Operator, Loki Operator, Tempo Operator) rather than bundled Helm charts. This simplifies upgrades and follows OpenShift best practices.
+- **Standalone Grafana** — OpenShift does not include Grafana; it is deployed as a standalone Helm chart with datasources pointing at the operator-managed backends via bearer token auth.
+- **Bearer token auth everywhere** — all monitoring query endpoints (Thanos Querier, Loki gateway, Tempo gateway) require SA tokens with `cluster-monitoring-view`. Grafana uses `$__file{}` to read its SA token; fleet agents get a 24h token injected at sandbox creation.
 - **Namespaces created out-of-band** — `helm uninstall` deletes Helm-managed namespaces, which would destroy non-Helm resources in them.
 - **agent-sandbox CRD applied out-of-band** — CRDs are cluster-scoped and should not be owned by a namespaced release.
 - **Demo app stays as Kustomize** — the incident route dynamically applies and deletes it via `kubectl`; dual Helm ownership would conflict.
 - **Route uses edge TLS** (not passthrough) — the gateway runs with `disableTls: true`, so there is no TLS to pass through. The `haproxy.router.openshift.io/enable-http2` annotation enables gRPC streaming.
 - **agent-sandbox CRD pinned to v0.4.6** — v0.5.0+ uses v1beta1 API; the OpenShell gateway 0.0.71 speaks v1alpha1 only. Mismatch causes `PERMISSION_DENIED` on supervisor bootstrap.
-- **`fullnameOverride` on all subcharts** — pins service names (e.g., `openshell`, `kps-grafana`, `loki`, `tempo`) so they are stable regardless of the Helm release name.
+- **`fullnameOverride` on subcharts** — pins service names (e.g., `openshell`, `grafana`) so they are stable regardless of the Helm release name.
 
 ### Components
 
@@ -328,12 +405,14 @@ The monitoring subchart is deployed as a **separate Helm release** in the `monit
 | agent-sandbox controller | `kubernetes-sigs/agent-sandbox` v0.4.6 | CRD controller for sandbox lifecycle |
 | OpenClaw sandbox | `ghcr.io/ansjindal/openclaw-sandbox:2026.6.10` | Sealed agent pod with OpenClaw |
 | Workshop web app | `quay.io/mmurakam/nemoclaw-workshop` | Next.js 16 + terminal bridge + API routes |
-| Prometheus + Alertmanager | kube-prometheus-stack (Helm) | Metrics collection and alerting |
-| Grafana | kube-prometheus-stack (Helm) | Dashboards and visualization |
-| Loki | Grafana Loki (Helm) | Log aggregation |
-| Tempo | Grafana Tempo (Helm) | Distributed tracing |
+| Thanos Querier | OpenShift Cluster Monitoring Operator | Federated PromQL API for metrics |
+| Grafana | Standalone Helm chart (`grafana/grafana`) | Dashboards and visualization |
+| Loki Operator + LokiStack | Red Hat Loki Operator (OLM) | Log aggregation (multi-tenant gateway) |
+| Tempo Operator + TempoStack | Red Hat Tempo Operator (OLM) | Distributed tracing |
+| OTEL Collector | Red Hat OpenTelemetry Operator (OLM) | Trace ingestion (OTLP → Tempo) |
+| MinIO | `deploy/observability/minio/` Helm chart | S3-compatible object storage for Loki + Tempo |
 | Event exporter | `ghcr.io/resmoio/kubernetes-event-exporter` | Kubernetes events → Loki |
-| Log shipper | Grafana Alloy | Pod logs → Loki |
+| ClusterLogForwarder | Red Hat Cluster Logging Operator (OLM) | Pod log collection → Loki |
 | Verdaccio | Built-in | Private npm registry for OpenClaw skills |
 
 ## Reference

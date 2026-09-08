@@ -1,173 +1,48 @@
-# kube-prometheus-stack pass-through (via alias "kps")
-# fullnameOverride pins resource names so they don't change with the release name.
-kps:
-  fullnameOverride: kps
-  crds:
-    enabled: true
-  prometheusOperator:
-    admissionWebhooks:
-      enabled: false
-    tls:
-      enabled: false
-    # Let OpenShift assign UID/GID from the namespace range instead of the
-    # upstream default 65534 (nobody), which falls outside the allowed range.
-    securityContext:
-      fsGroup: null
-    containerSecurityContext:
-      runAsUser: null
-  prometheus:
-    prometheusSpec:
-      # Let OpenShift assign UID/GID from the namespace range.
-      securityContext:
-        runAsUser: null
-        fsGroup: null
-      retention: 2d
-      serviceMonitorSelectorNilUsesHelmValues: false
-      podMonitorSelectorNilUsesHelmValues: false
-      ruleSelectorNilUsesHelmValues: false
-      probeSelectorNilUsesHelmValues: false
-      scrapeConfigSelectorNilUsesHelmValues: false
-      storageSpec:
-        volumeClaimTemplate:
-          spec:
-            accessModes: ["ReadWriteOnce"]
-            resources: { requests: { storage: 8Gi } }
-      resources:
-        requests: { cpu: 150m, memory: 600Mi }
-  alertmanager:
-    enabled: true
-    alertmanagerSpec:
-      # Let OpenShift assign UID/GID from the namespace range.
-      securityContext:
-        runAsUser: null
-        fsGroup: null
-      storage:
-        volumeClaimTemplate:
-          spec:
-            accessModes: ["ReadWriteOnce"]
-            resources: { requests: { storage: 1Gi } }
-  grafana:
-    enabled: true
-    fullnameOverride: kps-grafana
-    defaultDashboardsEnabled: true
-    # Let OpenShift assign UID/GID from the namespace range instead of the
-    # upstream default 472 (grafana), which falls outside the allowed range.
-    # Disable the init-chown-data init container (runs as root with CHOWN).
-    securityContext:
-      runAsUser: null
-      fsGroup: null
-    containerSecurityContext:
-      runAsUser: null
-    initChownData:
-      enabled: false
-    grafana.ini:
-      server:
-        root_url: "%(protocol)s://%(domain)s/grafana/"
-        serve_from_sub_path: true
-      dashboards:
-        default_home_dashboard_path: /tmp/dashboards/agent-fleet.json
-    service:
-      type: ClusterIP
-    persistence:
-      enabled: true
-      type: pvc
-      accessModes: ["ReadWriteOnce"]
-      size: 2Gi
-    sidecar:
-      dashboards:
-        enabled: true
-        label: grafana_dashboard
-        searchNamespace: ALL
-      datasources:
-        enabled: true
-        label: grafana_datasource
-        searchNamespace: ALL
-  nodeExporter:
-    enabled: false
-  prometheus-node-exporter:
-    fullnameOverride: kps-prometheus-node-exporter
-    hostRootFsMount:
-      enabled: true
-  kube-state-metrics:
-    fullnameOverride: kps-kube-state-metrics
-    # Let OpenShift assign UID/GID from the namespace range.
-    securityContext:
-      fsGroup: null
-    containerSecurityContext:
-      runAsUser: null
-    resources:
-      requests: { cpu: 20m, memory: 64Mi }
-  kubeControllerManager: { enabled: false }
-  kubeScheduler: { enabled: false }
-  kubeProxy: { enabled: false }
-  kubeEtcd: { enabled: false }
-
-# Loki pass-through
-loki:
-  fullnameOverride: loki
-  deploymentMode: SingleBinary
-  # Let OpenShift assign UID/GID from the namespace range.
-  loki:
-    podSecurityContext:
-      runAsUser: null
-      fsGroup: null
-    containerSecurityContext:
-      runAsUser: null
-    auth_enabled: false
-    commonConfig:
-      replication_factor: 1
-    storage:
-      type: filesystem
-    schemaConfig:
-      configs:
-        - from: "2024-01-01"
-          store: tsdb
-          object_store: filesystem
-          schema: v13
-          index: { prefix: loki_index_, period: 24h }
-    limits_config:
-      retention_period: 72h
-  singleBinary:
-    replicas: 1
-    persistence:
-      enabled: true
-      size: 5Gi
-    resources:
-      requests: { cpu: 100m, memory: 256Mi }
-  backend: { replicas: 0 }
-  read: { replicas: 0 }
-  write: { replicas: 0 }
-  chunksCache: { enabled: false }
-  resultsCache: { enabled: false }
-  gateway: { enabled: false }
-  lokiCanary: { enabled: false }
-  test: { enabled: false }
-
-# Tempo pass-through
-tempo:
-  fullnameOverride: tempo
-  # Let OpenShift assign UID/GID from the namespace range.
+# Standalone Grafana (OpenShift does not include Grafana)
+grafana:
+  fullnameOverride: grafana
   securityContext:
-    runAsUser: null
-    fsGroup: null
-  tempo:
-    storage:
-      trace:
-        backend: local
-        local:
-          path: /var/tempo/traces
-    metricsGenerator:
-      enabled: false
-    resources:
-      requests: { cpu: 50m, memory: 128Mi }
+    runAsNonRoot: true
+  containerSecurityContext: {}
+  initChownData:
+    enabled: false
+  grafana.ini:
+    server:
+      root_url: "%(protocol)s://%(domain)s/grafana/"
+      serve_from_sub_path: true
+    dashboards:
+      default_home_dashboard_path: /tmp/dashboards/agent-fleet.json
+  service:
+    type: ClusterIP
   persistence:
     enabled: true
-    size: 3Gi
+    type: pvc
+    accessModes: ["ReadWriteOnce"]
+    size: 2Gi
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      searchNamespace: ALL
+    datasources:
+      enabled: true
+      label: grafana_datasource
+      searchNamespace: ALL
+
+# OpenShift monitoring endpoints
+endpoints:
+  prometheus:
+    url: "https://thanos-querier.openshift-monitoring.svc.cluster.local:9091"
+  loki:
+    url: "https://logging-loki-gateway-http.openshift-logging.svc.cluster.local:8080"
+    applicationPath: "/api/logs/v1/application"
+    infrastructurePath: "/api/logs/v1/infrastructure"
+  tempo:
+    url: "https://tempo-tempostack-gateway.observability-hub.svc.cluster.local:8080"
+    tenantPath: "/api/traces/v1/dev"
 
 # Wrapper-level settings
 grafanaRoute:
   enabled: true
 eventExporter:
-  enabled: true
-logShipper:
   enabled: true

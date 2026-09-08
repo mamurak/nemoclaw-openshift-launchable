@@ -7,8 +7,8 @@
 # - skill   : optional registry skill to install. "-" = none (the agent queries via its SOUL,
 #             using node/curl). Publish a skill via Part V, then put @workshop/<name> here.
 #
-logs      loki.monitoring.svc.cluster.local:3100                              -
-metrics   kps-prometheus.monitoring.svc.cluster.local:9090   -
-traces    tempo.monitoring.svc.cluster.local:3200                             -
-events    loki.monitoring.svc.cluster.local:3100                              -
-analyst   -                                                                   -
+logs      logging-loki-gateway-http.openshift-logging.svc.cluster.local:8080       -
+metrics   thanos-querier.openshift-monitoring.svc.cluster.local:9091               -
+traces    tempo-tempostack-gateway.observability-hub.svc.cluster.local:8080        -
+events    logging-loki-gateway-http.openshift-logging.svc.cluster.local:8080       -
+analyst   -                                                                         -

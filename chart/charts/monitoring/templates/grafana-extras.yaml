@@ -1,6 +1,27 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
+  name: grafana-ds-prometheus
+  namespace: {{ .Release.Namespace }}
+  labels:
+    grafana_datasource: "1"
+data:
+  prometheus.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: Prometheus
+        type: prometheus
+        access: proxy
+        url: {{ .Values.endpoints.prometheus.url }}
+        jsonData:
+          httpHeaderName1: Authorization
+          tlsSkipVerify: true
+        secureJsonData:
+          httpHeaderValue1: Bearer $__file{/var/run/secrets/kubernetes.io/serviceaccount/token}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
   name: grafana-ds-loki-tempo
   namespace: {{ .Release.Namespace }}
   labels:
@@ -12,18 +33,27 @@ data:
       - name: Loki
         type: loki
         access: proxy
-        url: http://loki.{{ .Release.Namespace }}.svc.cluster.local:3100
+        url: {{ .Values.endpoints.loki.url }}{{ .Values.endpoints.loki.applicationPath }}
         jsonData:
+          httpHeaderName1: Authorization
+          tlsSkipVerify: true
           derivedFields:
             - name: TraceID
               matcherRegex: "traceID=(\\w+)"
               url: "$${__value.raw}"
               datasourceUid: tempo
+        secureJsonData:
+          httpHeaderValue1: Bearer $__file{/var/run/secrets/kubernetes.io/serviceaccount/token}
       - name: Tempo
         type: tempo
         uid: tempo
         access: proxy
-        url: http://tempo.{{ .Release.Namespace }}.svc.cluster.local:3100
+        url: {{ .Values.endpoints.tempo.url }}{{ .Values.endpoints.tempo.tenantPath }}
+        jsonData:
+          httpHeaderName1: Authorization
+          tlsSkipVerify: true
+        secureJsonData:
+          httpHeaderValue1: Bearer $__file{/var/run/secrets/kubernetes.io/serviceaccount/token}
 ---
 apiVersion: v1
 kind: ConfigMap

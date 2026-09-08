@@ -11,6 +11,9 @@ load_env
 # Auto-detect the cluster's apps domain for Route hostnames.
 DOMAIN="${CLUSTER_APPS_DOMAIN:-$(oc get ingresses.config/cluster -o jsonpath='{.spec.domain}')}"
 
+# Deploy the OpenShift observability stack (operators + MinIO + Tempo + Loki + OTEL).
+"$HERE/15-observability.sh"
+
 # Create namespaces out-of-band (NOT via Helm — helm uninstall deletes namespaces).
 for ns in openshell monitoring demo; do
   oc create namespace "$ns" --dry-run=client -o yaml | oc apply -f -
@@ -20,8 +23,7 @@ done
 ASB_VERSION="${AGENT_SANDBOX_VERSION:-v0.4.6}"
 oc apply -f "https://github.com/kubernetes-sigs/agent-sandbox/releases/download/${ASB_VERSION}/manifest.yaml"
 
-# Add Helm repos required by the monitoring subchart.
-helm repo add prometheus-community https://prometheus-community.github.io/helm-charts 2>/dev/null || true
+# Add Helm repos required by the monitoring subchart (standalone Grafana).
 helm repo add grafana https://grafana.github.io/helm-charts 2>/dev/null || true
 helm repo update
 
@@ -45,8 +47,6 @@ helm upgrade --install nemoclaw "$REPO_ROOT/chart/" \
   --wait --timeout 15m
 
 # Configure the gateway's inference provider (privacy router) so agents can reach a model.
-# Runs from inside the workshop pod — the openshell CLI is already installed there, the
-# gateway is reachable via ClusterIP, and the inference env vars are set by the Helm values.
 API_KEY="${NEMOCLAW_PROVIDER_KEY:-${NEMOCLAW_API_KEY:-}}"
 BASE_URL="${NEMOCLAW_INFERENCE_BASE_URL:-}"
 MODEL="${NEMOCLAW_MODEL:-}"
@@ -63,13 +63,13 @@ if [[ -n "$BASE_URL" && -n "$MODEL" && -n "$API_KEY" ]]; then
     || warn "Inference provider setup failed — configure manually."
 fi
 
-# Install monitoring in its own namespace (separate release so {{ .Release.Namespace }} = monitoring).
-log "Installing monitoring stack"
+# Install monitoring (Grafana + event-exporter) in its own namespace.
+log "Installing monitoring (Grafana + event-exporter)"
 helm upgrade --install nemoclaw-monitoring "$REPO_ROOT/chart/charts/monitoring/" \
   -n monitoring \
   --set global.clusterAppsDomain="$DOMAIN" \
-  --set kps.grafana.adminPassword="${MONITORING_GRAFANA_PASSWORD:-openclaw}" \
-  --wait --timeout 15m
+  --set grafana.adminPassword="${MONITORING_GRAFANA_PASSWORD:-openclaw}" \
+  --wait --timeout 10m
 
 # Deploy the demo app via Kustomize (NOT Helm-managed — incident route does apply/delete).
 if [[ "${DEPLOY_DEMO_APP:-true}" == "true" ]]; then

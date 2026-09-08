@@ -4,9 +4,9 @@
 #
 #     name : backend            # backend = host:port the agent may reach, or "-" for none
 #
-# e.g.   logs    : loki.monitoring.svc.cluster.local:3100
-#        metrics : kps-prometheus.monitoring.svc.cluster.local:9090
-#        traces  : tempo.monitoring.svc.cluster.local:3200
+# e.g.   logs    : logging-loki-gateway-http.openshift-logging.svc.cluster.local:8080
+#        metrics : thanos-querier.openshift-monitoring.svc.cluster.local:9091
+#        traces  : tempo-tempostack-gateway.observability-hub.svc.cluster.local:8080
 #        writer  : -
 #
 # For each agent this: creates a sealed sandbox whose deny-by-default policy allows ONLY
@@ -103,6 +103,14 @@ up() {
       for f in IDENTITY.md SOUL.md BOOTSTRAP.md; do
         [[ -f "$ROLES/$name/$f" ]] && ox "$name" "mkdir -p /sandbox && echo $(b64 < "$ROLES/$name/$f") | base64 -d > /sandbox/$f"
       done
+    fi
+    # Inject a monitoring auth token for OpenShift backends (Thanos, Loki gateway, Tempo gateway)
+    if [[ "${BK[$i]}" != "-" && -n "${BK[$i]}" ]]; then
+      local mon_token
+      mon_token=$(oc create token monitoring-reader -n monitoring --duration=24h 2>/dev/null) || true
+      if [[ -n "$mon_token" ]]; then
+        ox "$name" "echo '$mon_token' > /sandbox/.monitoring-token && chmod 400 /sandbox/.monitoring-token"
+      fi
     fi
     # stage the cluster-telemetry skill for any agent with a backend — this is how a sealed
     # specialist reads its in-cluster Loki/Prometheus/Tempo (web_fetch blocks internal hosts;

@@ -61,6 +61,12 @@ spec:
             - name: NEMOCLAW_API_KEY
               value: {{ .Values.inference.apiKey | quote }}
             {{- end }}
+            - name: PROM_HOST
+              value: {{ .Values.monitoring.promHost | quote }}
+            - name: LOKI_HOST
+              value: {{ .Values.monitoring.lokiHost | quote }}
+            - name: TEMPO_HOST
+              value: {{ .Values.monitoring.tempoHost | quote }}
           readinessProbe:
             httpGet:
               path: /

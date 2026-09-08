@@ -44,8 +44,8 @@ network_policies:
   tool-egress:
     name: tool-egress
     endpoints:
-      - host: kps-prometheus.monitoring.svc.cluster.local
-        port: 9090
+      - host: thanos-querier.openshift-monitoring.svc.cluster.local
+        port: 9091
         access: full
     binaries:
       - path: /usr/bin/node
