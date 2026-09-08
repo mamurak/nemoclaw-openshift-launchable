@@ -10,6 +10,8 @@ web/tsconfig.tsbuildinfo
 .DS_Store
 
 *.lock
+!chart/Chart.lock
+!chart/charts/*/Chart.lock
 
 *.tgz
 
