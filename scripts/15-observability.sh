@@ -26,14 +26,12 @@ declare -A OPERATOR_NS=(
 )
 for op in observability otel tempo logging loki; do
   log "  ▶ $op → ${OPERATOR_NS[$op]}"
-  "$HERE/lib/operator-manager.sh" -i "$op" -n "${OPERATOR_NS[$op]}" || {
-    warn "Operator '$op' install failed — non-fatal, continuing."
-  }
+  "$HERE/lib/operator-manager.sh" -i "$op" -n "${OPERATOR_NS[$op]}"
 done
 
 # --- enable User Workload Monitoring ---
 log "Enabling User Workload Monitoring"
-"$HERE/lib/enable-uwm.sh" || warn "UWM enablement failed — non-fatal."
+"$HERE/lib/enable-uwm.sh"
 
 # --- create namespace for Tempo / OTEL / MinIO ---
 oc create namespace observability-hub --dry-run=client -o yaml | oc apply -f -
