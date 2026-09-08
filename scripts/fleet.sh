@@ -36,7 +36,7 @@ policy_for() {                       # $1 = backend host:port (or "-")
   [[ "$be" != "-" && -n "$be" ]] && extra="
   tool-egress:
     name: tool-egress
-    endpoints: [ { host: ${host}, port: ${port}, access: full } ]
+    endpoints: [ { host: ${host}, port: ${port}, access: full, protocol: rest } ]
     binaries: [ {path: /usr/bin/node}, {path: /usr/local/bin/node}, {path: /usr/bin/curl} ]"
   cat <<YAML
 version: 1

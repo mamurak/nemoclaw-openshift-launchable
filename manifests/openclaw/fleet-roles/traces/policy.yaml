@@ -47,6 +47,7 @@ network_policies:
       - host: tempo-tempostack-gateway.observability-hub.svc.cluster.local
         port: 8080
         access: full
+        protocol: rest
     binaries:
       - path: /usr/bin/node
       - path: /usr/local/bin/node
