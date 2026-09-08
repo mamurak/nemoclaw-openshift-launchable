@@ -145,12 +145,7 @@ Before deploying, ensure you have:
 
 ### Deployment
 
-1. **Clone the repository:**
-
-```bash
-git clone https://github.com/rh-ai-quickstart/aiops-sandboxed-agent-fleet.git
-cd nemoclaw-openshift-launchable
-```
+1. **Clone the repository and navigate to its root folder**
 
 2. **Configure your environment:**
 
