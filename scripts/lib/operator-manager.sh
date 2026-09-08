@@ -147,11 +147,11 @@ parse_args() {
 
     # Determine operator details if YAML file not provided
     if [ -z "$YAML_FILE" ]; then
-        [[ "$DEBUG" == "true" ]] && echo -e "${BLUE} **** 📋 Auto-detecting operator and YAML file for: $OPERATOR_NAME${NC}"
+        [[ "$DEBUG" == "true" ]] && echo -e "${BLUE} **** 📋 Auto-detecting operator and YAML file for: $OPERATOR_NAME${NC}" || true
         OPERATOR_NAME=$(get_operator_full_name "$OPERATOR_NAME") || exit 1
         YAML_FILE=$(get_operator_yaml "$OPERATOR_NAME") || exit 1
-        [[ "$DEBUG" == "true" ]] && echo -e "${BLUE}📋 Auto-detected operator: $OPERATOR_NAME${NC}"
-        [[ "$DEBUG" == "true" ]] && echo -e "${BLUE}📋 Auto-detected YAML file: $YAML_FILE${NC}"
+        [[ "$DEBUG" == "true" ]] && echo -e "${BLUE}📋 Auto-detected operator: $OPERATOR_NAME${NC}" || true
+        [[ "$DEBUG" == "true" ]] && echo -e "${BLUE}📋 Auto-detected YAML file: $YAML_FILE${NC}" || true
     fi
 
     # Check if operator is installed (pass NAMESPACE if available from -n flag)
@@ -220,7 +220,7 @@ validate_namespace() {
 
     if [ "$action" = "$OPERATOR_ACTION_INSTALL" ]; then
         # For install: namespace will be created by the YAML if it doesn't exist
-        [[ "$DEBUG" == "true" ]] && echo -e "${BLUE}  📋 Installing in namespace: $NAMESPACE${NC}"
+        [[ "$DEBUG" == "true" ]] && echo -e "${BLUE}  📋 Installing in namespace: $NAMESPACE${NC}" || true
     elif [ "$action" = "$OPERATOR_ACTION_UNINSTALL" ]; then
         # For uninstall: namespace must exist
         if ! oc get namespace "$NAMESPACE" >/dev/null 2>&1; then
@@ -228,7 +228,7 @@ validate_namespace() {
             echo -e "${YELLOW}   Cannot uninstall from non-existent namespace${NC}"
             exit 1
         else
-            [[ "$DEBUG" == "true" ]] && echo -e "${BLUE}  📋 Using namespace: $NAMESPACE${NC}"
+            [[ "$DEBUG" == "true" ]] && echo -e "${BLUE}  📋 Using namespace: $NAMESPACE${NC}" || true
         fi
     fi
 }
@@ -273,7 +273,7 @@ get_subscription_info() {
 check_operator() {
     local operator_name="$1"
     local ns_override="${2:-}"
-    [[ "$DEBUG" == "true" ]] && echo -e "${BLUE}📋 Checking operator: $operator_name${NC}"
+    [[ "$DEBUG" == "true" ]] && echo -e "${BLUE}📋 Checking operator: $operator_name${NC}" || true
 
     # Get subscription name and namespace
     local sub_info=$(get_subscription_info "$operator_name")
@@ -288,28 +288,28 @@ check_operator() {
         namespace="${ns_override:-${sub_info##*:}}"
     fi
 
-    [[ "$DEBUG" == "true" ]] && echo -e "${BLUE}   → Looking for subscription '$subscription_name' in namespace '$namespace'${NC}"
+    [[ "$DEBUG" == "true" ]] && echo -e "${BLUE}   → Looking for subscription '$subscription_name' in namespace '$namespace'${NC}" || true
 
     # Check if subscription exists
     if ! oc get "$OLM_SUBSCRIPTION_RESOURCE" "$subscription_name" -n "$namespace" >/dev/null 2>&1; then
-        [[ "$DEBUG" == "true" ]] && echo -e "${BLUE}   → Subscription does not exist${NC}"
+        [[ "$DEBUG" == "true" ]] && echo -e "${BLUE}   → Subscription does not exist${NC}" || true
         return 1  # Subscription missing
     fi
 
     # Check if CSV exists and is in Succeeded phase
     local csv_name=$(oc get "$OLM_SUBSCRIPTION_RESOURCE" "$subscription_name" -n "$namespace" -o jsonpath='{.status.installedCSV}' 2>/dev/null)
     if [ -z "$csv_name" ] || [ "$csv_name" = "null" ]; then
-        [[ "$DEBUG" == "true" ]] && echo -e "${BLUE}   → CSV not yet installed${NC}"
+        [[ "$DEBUG" == "true" ]] && echo -e "${BLUE}   → CSV not yet installed${NC}" || true
         return 1  # CSV not installed
     fi
 
     local csv_phase=$(oc get "$OLM_CSV_RESOURCE" "$csv_name" -n "$namespace" -o jsonpath='{.status.phase}' 2>/dev/null)
     if [ "$csv_phase" != "Succeeded" ]; then
-        [[ "$DEBUG" == "true" ]] && echo -e "${BLUE}   → CSV phase is '$csv_phase' (expected 'Succeeded')${NC}"
+        [[ "$DEBUG" == "true" ]] && echo -e "${BLUE}   → CSV phase is '$csv_phase' (expected 'Succeeded')${NC}" || true
         return 1  # CSV not ready
     fi
 
-    [[ "$DEBUG" == "true" ]] && echo -e "${BLUE}   → Operator fully installed (CSV: $csv_name, Phase: $csv_phase)${NC}"
+    [[ "$DEBUG" == "true" ]] && echo -e "${BLUE}   → Operator fully installed (CSV: $csv_name, Phase: $csv_phase)${NC}" || true
     return 0  # Operator fully installed
 }
 
@@ -506,7 +506,7 @@ approve_install_plan_if_manual() {
     local approval
     approval=$(oc get "$OLM_SUBSCRIPTION_RESOURCE" "$subscription_name" -n "$namespace" -o jsonpath='{.spec.installPlanApproval}' 2>/dev/null || echo "")
     if [ "$(echo "$approval" | tr '[:upper:]' '[:lower:]')" != "manual" ]; then
-        [[ "$DEBUG" == "true" ]] && echo -e "${BLUE}  📋 Install plan approval is '$approval' (not Manual); nothing to approve${NC}"
+        [[ "$DEBUG" == "true" ]] && echo -e "${BLUE}  📋 Install plan approval is '$approval' (not Manual); nothing to approve${NC}" || true
         return 0
     fi
 
@@ -613,7 +613,7 @@ cleanup_stale_operator_subscriptions() {
     local package_name="$1"
     local target_namespace="$2"
 
-    [[ "$DEBUG" == "true" ]] && echo -e "${BLUE}  📋 Checking for stale subscriptions for package '$package_name' outside '$target_namespace'...${NC}"
+    [[ "$DEBUG" == "true" ]] && echo -e "${BLUE}  📋 Checking for stale subscriptions for package '$package_name' outside '$target_namespace'...${NC}" || true
 
     # Find subscriptions for the same package in other namespaces
     local stale_subs
@@ -630,7 +630,7 @@ for item in data.get('items', []):
 " 2>/dev/null)
 
     if [ -z "$stale_subs" ]; then
-        [[ "$DEBUG" == "true" ]] && echo -e "${BLUE}  📋 No stale subscriptions found${NC}"
+        [[ "$DEBUG" == "true" ]] && echo -e "${BLUE}  📋 No stale subscriptions found${NC}" || true
         return 0
     fi
 
@@ -882,8 +882,8 @@ for doc in docs:
 
 # Main execution
 main() {
-    [[ "$DEBUG" == "true" ]] && echo -e "${BLUE}🚀 OpenShift Operator Management${NC}"
-    [[ "$DEBUG" == "true" ]] && echo "=================================="
+    [[ "$DEBUG" == "true" ]] && echo -e "${BLUE}🚀 OpenShift Operator Management${NC}" || true
+    [[ "$DEBUG" == "true" ]] && echo "==================================" || true
 
     check_openshift_prerequisites
 
