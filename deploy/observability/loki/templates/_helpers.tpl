@@ -97,7 +97,7 @@ Detect storage class to use for LokiStack.
 Tries multiple strategies in order:
 1. Use explicitly provided value (if not empty or "auto")
 2. Detect cluster default storage class using lookup
-3. Fall back to "gp3" (AWS default)
+3. Fail with a clear error (no hardcoded cloud-specific default)
 
 Usage: {{ include "loki-stack.storageClass" . }}
 */}}
@@ -118,7 +118,7 @@ Usage: {{ include "loki-stack.storageClass" . }}
   {{- if $defaultSC -}}
     {{- $defaultSC -}}
   {{- else -}}
-    gp3
+    {{- fail "No default StorageClass found and no explicit storageClass set in values.yaml (set lokiStack.storageClassName)" -}}
   {{- end -}}
 {{- end -}}
 {{- end }}

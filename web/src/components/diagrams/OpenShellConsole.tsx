@@ -78,7 +78,7 @@ export function OpenShellConsole() {
             <div className="text-[var(--color-fg-mut)]"># pod-doctor · allowed egress (deny-by-default)</div>
             <div>✓ /usr/bin/oc → kubernetes.default.svc:443 · GET /api/**, /apis/**</div>
             <div>✓ /usr/bin/node → inference.local:443 · POST /v1/**</div>
-            <div>✓ /usr/bin/oc → prometheus.monitoring.svc:9090 · GET /api/v1/**</div>
+            <div>✓ /usr/bin/oc → thanos-querier.openshift-monitoring.svc:9091 · GET /api/v1/**</div>
             <div className="text-[var(--color-fg-mut)]">✗ everything else — blocked</div>
           </div>
         )}

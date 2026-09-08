@@ -16,7 +16,6 @@ sources:
   - https://github.com/grafana/tempo-operator
 maintainers:
   - name: Observability Team
-    email: observability@company.com
 annotations:
   category: Observability
   openshift.io/display-name: "Tempo Stack with Storage"

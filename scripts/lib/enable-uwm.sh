@@ -70,7 +70,7 @@ is_user_workload_enabled() {
 
     # If ConfigMap doesn't exist or is empty, user workload is not enabled
     if [ -z "$config_yaml" ] || [ "$config_yaml" = "null" ]; then
-        [[ "$DEBUG" == "true" ]] && echo -e "${BLUE}  → ConfigMap not found or empty${NC}" || true
+        debug "${BLUE}  → ConfigMap not found or empty${NC}"
         return 1
     fi
 
@@ -79,7 +79,7 @@ is_user_workload_enabled() {
         return 0
     fi
 
-    [[ "$DEBUG" == "true" ]] && echo -e "${BLUE}  → enableUserWorkload not found or not true${NC}" || true
+    debug "${BLUE}  → enableUserWorkload not found or not true${NC}"
     return 1
 }
 
@@ -104,7 +104,7 @@ is_alertmanager_enabled() {
 
     # If ConfigMap doesn't exist or is empty, Alertmanager is not enabled
     if [ -z "$config_yaml" ] || [ "$config_yaml" = "null" ]; then
-        [[ "$DEBUG" == "true" ]] && echo -e "${BLUE}  → ConfigMap not found or empty${NC}" || true
+        debug "${BLUE}  → ConfigMap not found or empty${NC}"
         return 1
     fi
 
@@ -113,7 +113,7 @@ is_alertmanager_enabled() {
         return 0
     fi
 
-    [[ "$DEBUG" == "true" ]] && echo -e "${BLUE}  → alertmanager.enabled not found or not true${NC}" || true
+    debug "${BLUE}  → alertmanager.enabled not found or not true${NC}"
     return 1
 }
 

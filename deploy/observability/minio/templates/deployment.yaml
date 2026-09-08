@@ -26,7 +26,7 @@ spec:
       {{- end }}
       containers:
       - name: minio
-        image: quay.io/minio/minio:latest
+        image: quay.io/minio/minio:RELEASE.2024-11-07T00-52-20Z
         args:
         - server
         - /data
@@ -39,11 +39,21 @@ spec:
         - name: webui
           containerPort: 9090
           protocol: TCP
-        env:
-        - name: MINIO_ROOT_USER
-          value: {{ .Values.minio.secret.user | quote }}
-        - name: MINIO_ROOT_PASSWORD
-          value: {{ .Values.minio.secret.password | quote }}
+        envFrom:
+        - secretRef:
+            name: {{ include "minio.fullname" . }}
+        livenessProbe:
+          httpGet:
+            path: /minio/health/live
+            port: api
+          initialDelaySeconds: 10
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /minio/health/ready
+            port: api
+          initialDelaySeconds: 5
+          periodSeconds: 15
         {{- with .Values.minio.containerSecurityContext }}
         securityContext:
           {{- toYaml . | nindent 10 }}

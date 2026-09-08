@@ -44,8 +44,6 @@ This will create:
 - Required RBAC permissions
 - Integration with the existing MinIO deployment
 
-⚠️ **Important Configuration Fix**: This chart resolves the gateway/Jaeger ingress conflict by using the recommended Gateway approach. See [`CONFIGURATION_FIX.md`](./CONFIGURATION_FIX.md) for details.
-
 ## Configuration Details
 
 ### Shared MinIO Storage

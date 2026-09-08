@@ -14,5 +14,6 @@ web/tsconfig.tsbuildinfo
 *.tgz
 
 web/test-results/
+web/playwright-report/
 
 .claude/

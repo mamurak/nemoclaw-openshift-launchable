@@ -13,9 +13,10 @@ NC='\033[0m'
 
 DEBUG="${DEBUG:-false}"
 
-log()  { printf '\033[1;32m[+]\033[0m %s\n' "$*"; }
-warn() { printf '\033[1;33m[!]\033[0m %s\n' "$*" >&2; }
-die()  { printf '\033[1;31m[x]\033[0m %s\n' "$*" >&2; exit 1; }
+log()   { printf '\033[1;32m[+]\033[0m %s\n' "$*"; }
+warn()  { printf '\033[1;33m[!]\033[0m %s\n' "$*" >&2; }
+die()   { printf '\033[1;31m[x]\033[0m %s\n' "$*" >&2; exit 1; }
+debug() { [[ "${DEBUG:-false}" == "true" ]] && echo -e "$@" || true; }
 
 # Load .env if present (don't fail if missing — preflight reports what's needed).
 load_env() {
@@ -51,8 +52,8 @@ check_openshift_login() {
 }
 
 check_openshift_prerequisites() {
-  [[ "$DEBUG" == "true" ]] && echo -e "${BLUE}🔍 Checking prerequisites...${NC}" || true
+  debug "${BLUE}🔍 Checking prerequisites...${NC}"
   check_tool_exists "oc"
   check_openshift_login
-  [[ "$DEBUG" == "true" ]] && echo -e "${GREEN}✅ Prerequisites check passed${NC}" || true
+  debug "${GREEN}✅ Prerequisites check passed${NC}"
 }

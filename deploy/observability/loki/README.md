@@ -10,8 +10,8 @@ This Helm chart contains the **production-tested configuration** that successful
 
 ### LokiStack Configuration
 
-- **Size**: `1x.small`
-- **Ingester Replicas**: `2` (CRITICAL - prevents ring coordination issues)
+- **Size**: `1x.demo` (default; use `1x.small` with 2+ ingester replicas for production)
+- **Ingester Replicas**: `1` (default; scale to 2 for production to prevent ring coordination issues)
 - **Storage**: Shared MinIO instance in `observability-hub` namespace (cross-namespace access from `openshift-logging`)
 - **Schema Version**: `v13` (updated from v12)
 
@@ -317,7 +317,7 @@ kubectl exec -n observability-hub minio-observability-storage-0 -- df -h | grep 
 lokiStack:
   template:
     ingester:
-      replicas: 2 # CRITICAL - never use 1 replica
+      replicas: 2 # recommended for production (default is 1 for workshop/demo)
 ```
 
 ### Issue 3: Ingester Stuck on WAL Recovery
@@ -511,7 +511,7 @@ oc get clusterlogforwarder logging-loki-forwarder -n openshift-logging \
 
 ### Resource Usage
 
-- **LokiStack Size**: 1x.small handles current load comfortably
+- **LokiStack Size**: 1x.demo is sufficient for workshop use; scale to 1x.small for production
 - **MinIO Storage**: 100GB sufficient for 2+ weeks retention
 - **Memory**: Ingesters use ~2GB each under normal load
 - **CPU**: Low usage except during compaction cycles
