@@ -76,6 +76,14 @@ if [[ "${DEPLOY_DEMO_APP:-true}" == "true" ]]; then
   oc apply -k "$REPO_ROOT/manifests/demo-app/"
 fi
 
+# Bring up the SRE agent fleet (runs inside the workshop pod where the openshell CLI,
+# fleet.sh, fleet.txt, and all fleet-role manifests are already present).
+log "Bringing up the agent fleet (via workshop pod)"
+oc -n openshell exec deploy/workshop -c workshop -- \
+  bash /app/scripts/fleet.sh up /app/fleet.txt \
+  && log "Agent fleet is up" \
+  || warn "Fleet setup failed — run './scripts/fleet.sh up fleet.txt' manually from the workshop pod."
+
 [[ "${PROVISION_AGENT:-false}" == "true" ]] && "$HERE/45-openclaw.sh"
 
 log "Workshop:  https://workshop-openshell.${DOMAIN}/"
