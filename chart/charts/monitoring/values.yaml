@@ -9,8 +9,18 @@ kps:
       enabled: false
     tls:
       enabled: false
+    # Let OpenShift assign UID/GID from the namespace range instead of the
+    # upstream default 65534 (nobody), which falls outside the allowed range.
+    securityContext:
+      fsGroup: null
+    containerSecurityContext:
+      runAsUser: null
   prometheus:
     prometheusSpec:
+      # Let OpenShift assign UID/GID from the namespace range.
+      securityContext:
+        runAsUser: null
+        fsGroup: null
       retention: 2d
       serviceMonitorSelectorNilUsesHelmValues: false
       podMonitorSelectorNilUsesHelmValues: false
@@ -27,6 +37,10 @@ kps:
   alertmanager:
     enabled: true
     alertmanagerSpec:
+      # Let OpenShift assign UID/GID from the namespace range.
+      securityContext:
+        runAsUser: null
+        fsGroup: null
       storage:
         volumeClaimTemplate:
           spec:
@@ -36,6 +50,16 @@ kps:
     enabled: true
     fullnameOverride: kps-grafana
     defaultDashboardsEnabled: true
+    # Let OpenShift assign UID/GID from the namespace range instead of the
+    # upstream default 472 (grafana), which falls outside the allowed range.
+    # Disable the init-chown-data init container (runs as root with CHOWN).
+    securityContext:
+      runAsUser: null
+      fsGroup: null
+    containerSecurityContext:
+      runAsUser: null
+    initChownData:
+      enabled: false
     grafana.ini:
       server:
         root_url: "%(protocol)s://%(domain)s/grafana/"
@@ -66,6 +90,11 @@ kps:
       enabled: true
   kube-state-metrics:
     fullnameOverride: kps-kube-state-metrics
+    # Let OpenShift assign UID/GID from the namespace range.
+    securityContext:
+      fsGroup: null
+    containerSecurityContext:
+      runAsUser: null
     resources:
       requests: { cpu: 20m, memory: 64Mi }
   kubeControllerManager: { enabled: false }
@@ -77,7 +106,13 @@ kps:
 loki:
   fullnameOverride: loki
   deploymentMode: SingleBinary
+  # Let OpenShift assign UID/GID from the namespace range.
   loki:
+    podSecurityContext:
+      runAsUser: null
+      fsGroup: null
+    containerSecurityContext:
+      runAsUser: null
     auth_enabled: false
     commonConfig:
       replication_factor: 1
@@ -111,6 +146,10 @@ loki:
 # Tempo pass-through
 tempo:
   fullnameOverride: tempo
+  # Let OpenShift assign UID/GID from the namespace range.
+  securityContext:
+    runAsUser: null
+    fsGroup: null
   tempo:
     storage:
       trace:

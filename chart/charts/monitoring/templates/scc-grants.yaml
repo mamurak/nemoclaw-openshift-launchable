@@ -2,9 +2,8 @@
 SCC grants for the monitoring namespace — least-privilege per component.
 
 Only node-exporter needs elevated access (hostPath + hostPort + hostPID).
-Grafana, Loki, and Tempo need nonroot to run as a specific non-root UID.
-Everything else (Prometheus, Operator, kube-state-metrics, Alertmanager)
-runs under OpenShift's default restricted SCC.
+All other components have their UIDs/GIDs nulled so OpenShift assigns from
+the namespace range, letting them run under the default restricted SCC.
 */ -}}
 {{- if (index .Values "kps" "nodeExporter" "enabled") }}
 apiVersion: rbac.authorization.k8s.io/v1
@@ -32,34 +31,3 @@ subjects:
     name: kps-prometheus-node-exporter
     namespace: {{ .Release.Namespace }}
 {{- end }}
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: monitoring-scc-nonroot
-  namespace: {{ .Release.Namespace }}
-rules:
-  - apiGroups: ["security.openshift.io"]
-    resources: ["securitycontextconstraints"]
-    resourceNames: ["nonroot"]
-    verbs: ["use"]
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: monitoring-scc-nonroot
-  namespace: {{ .Release.Namespace }}
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: Role
-  name: monitoring-scc-nonroot
-subjects:
-  - kind: ServiceAccount
-    name: kps-grafana
-    namespace: {{ .Release.Namespace }}
-  - kind: ServiceAccount
-    name: loki
-    namespace: {{ .Release.Namespace }}
-  - kind: ServiceAccount
-    name: tempo
-    namespace: {{ .Release.Namespace }}

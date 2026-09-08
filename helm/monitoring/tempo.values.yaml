@@ -1,5 +1,9 @@
 # Grafana Tempo (monolithic) — tracing backend. Receives OTLP (gRPC 4317 / HTTP 4318)
 # from in-cluster apps and is wired into Grafana as the "Tempo" datasource.
+# Let OpenShift assign UID/GID from the namespace range.
+securityContext:
+  runAsUser: null
+  fsGroup: null
 tempo:
   storage:
     trace:

@@ -23,14 +23,11 @@ helm repo update prometheus-community grafana >/dev/null 2>&1 || true
 
 oc create namespace "$NS" --dry-run=client -o yaml | oc apply -f -
 
-# SCC grants: node-exporter needs privileged (hostPath + hostPort + hostPID). Grafana,
-# Loki, and Tempo need nonroot. Everything else runs under restricted. The Helm chart
-# also declares these via Role/RoleBinding (chart/charts/monitoring/templates/scc-grants.yaml).
-log "Granting SCCs (privileged: node-exporter; nonroot: grafana, loki, tempo)"
+# SCC grants: node-exporter needs privileged (hostPath + hostPort + hostPID).
+# All other components have their UIDs/GIDs nulled so OpenShift assigns from the
+# namespace range — they run under restricted without any SCC grant.
+log "Granting SCC (privileged: node-exporter)"
 oc -n "$NS" adm policy add-scc-to-user privileged -z kps-prometheus-node-exporter >/dev/null 2>&1 || true
-for sa in kps-grafana loki tempo; do
-  oc -n "$NS" adm policy add-scc-to-user nonroot -z "$sa" >/dev/null 2>&1 || true
-done
 
 log "Installing kube-prometheus-stack (Prometheus + Grafana + exporters) — no --wait yet"
 helm upgrade --install kps prometheus-community/kube-prometheus-stack \

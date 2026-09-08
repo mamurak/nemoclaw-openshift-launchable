@@ -14,9 +14,19 @@ prometheusOperator:
     enabled: false
   tls:
     enabled: false
+  # Let OpenShift assign UID/GID from the namespace range instead of the
+  # upstream default 65534 (nobody), which falls outside the allowed range.
+  securityContext:
+    fsGroup: null
+  containerSecurityContext:
+    runAsUser: null
 
 prometheus:
   prometheusSpec:
+    # Let OpenShift assign UID/GID from the namespace range.
+    securityContext:
+      runAsUser: null
+      fsGroup: null
     retention: 2d
     # Discover ServiceMonitors/PodMonitors created by anything, not just this release.
     serviceMonitorSelectorNilUsesHelmValues: false
@@ -36,6 +46,10 @@ prometheus:
 alertmanager:
   enabled: true
   alertmanagerSpec:
+    # Let OpenShift assign UID/GID from the namespace range.
+    securityContext:
+      runAsUser: null
+      fsGroup: null
     storage:
       volumeClaimTemplate:
         spec:
@@ -46,6 +60,16 @@ alertmanager:
 grafana:
   enabled: true
   defaultDashboardsEnabled: true
+  # Let OpenShift assign UID/GID from the namespace range instead of the
+  # upstream default 472 (grafana), which falls outside the allowed range.
+  # Disable the init-chown-data init container (runs as root with CHOWN).
+  securityContext:
+    runAsUser: null
+    fsGroup: null
+  containerSecurityContext:
+    runAsUser: null
+  initChownData:
+    enabled: false
   # Served under /grafana so the workshop site proxies it same-origin (Next rewrite in
   # web/next.config.ts) — one Brev URL, no separate grafana tunnel. Land on the pre-loaded
   # Agent Fleet dashboard (the sidecar writes labelled dashboard ConfigMaps to /tmp/dashboards/).
@@ -85,6 +109,11 @@ prometheus-node-exporter:
     enabled: true
 
 kube-state-metrics:
+  # Let OpenShift assign UID/GID from the namespace range.
+  securityContext:
+    fsGroup: null
+  containerSecurityContext:
+    runAsUser: null
   resources:
     requests: { cpu: 20m, memory: 64Mi }
 

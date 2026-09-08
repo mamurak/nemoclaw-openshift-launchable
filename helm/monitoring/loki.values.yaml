@@ -1,6 +1,12 @@
 # Grafana Loki — single-binary, filesystem backend. Plenty for one node.
 deploymentMode: SingleBinary
+# Let OpenShift assign UID/GID from the namespace range.
 loki:
+  podSecurityContext:
+    runAsUser: null
+    fsGroup: null
+  containerSecurityContext:
+    runAsUser: null
   auth_enabled: false
   commonConfig:
     replication_factor: 1
