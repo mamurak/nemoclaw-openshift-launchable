@@ -37,18 +37,13 @@ if ! oc get crd sandboxes.agents.x-k8s.io >/dev/null 2>&1; then
   oc apply -f "https://github.com/kubernetes-sigs/agent-sandbox/releases/download/${ASB_VERSION}/manifest.yaml"
 fi
 
-# SCC grants (BEFORE install — bindings may reference SAs that don't exist yet).
-# Official OpenShift posture grants `privileged` to the sandbox SA. But the chart's
-# pre-install certgen HOOK and the gateway run under the `openshell`/`default` SAs — on
-# MicroShift those also need an SCC or the certgen Job never schedules and helm fails with
-# "job openshell-certgen failed: DeadlineExceeded". So grant all three.
-log "Granting SCCs (privileged: openshell-sandbox; anyuid: gateway + certgen-hook SAs)"
+# SCC grant (BEFORE install — binding may reference SA that doesn't exist yet).
+# Sandbox pods need privileged because the supervisor performs network namespace mounts.
+# The gateway runs under restricted SCC (fsGroup/runAsUser are null, so OpenShift assigns
+# from the namespace range). The Helm chart also declares this via Role/RoleBinding.
+log "Granting SCC (privileged: openshell-sandbox)"
 oc -n "$NS" adm policy add-scc-to-user privileged -z openshell-sandbox 2>/dev/null || \
   warn "Could not add privileged SCC to openshell-sandbox."
-for sa in openshell default; do
-  oc -n "$NS" adm policy add-scc-to-user anyuid -z "$sa" 2>/dev/null || \
-    warn "Could not add anyuid SCC to '$sa'."
-done
 
 # PIN the chart version — DO NOT track "latest". The whole stack is validated against a
 # specific gateway/supervisor build: 0.0.71 (helm-chart-0.0.71, app 0.0.71) provisions

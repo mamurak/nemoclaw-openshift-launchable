@@ -9,7 +9,7 @@ spec:
   ttlSecondsAfterFinished: 600
   template:
     spec:
-      serviceAccountName: default
+      serviceAccountName: openshell-sandbox
       restartPolicy: Never
       containers:
         - name: prepull

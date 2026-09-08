@@ -1,8 +1,8 @@
 {{- /*
-SCC grants for the OpenShell namespace. Sandbox pods need privileged;
-the gateway and its certgen hook need anyuid so OpenShift schedules them.
-These are Roles/RoleBindings that grant SCCs via RBAC (the oc adm policy
-equivalent as declarative YAML).
+SCC grant for the OpenShell namespace. Sandbox pods need privileged because
+the supervisor performs network namespace mounts (CAP_SYS_ADMIN + Unconfined
+AppArmor). The gateway and other pods run under OpenShift's restricted SCC
+(fsGroup/runAsUser are null so OpenShift assigns from the namespace range).
 */ -}}
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -27,32 +27,4 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: openshell-sandbox
-    namespace: {{ .Release.Namespace }}
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: openshell-scc-anyuid
-  namespace: {{ .Release.Namespace }}
-rules:
-  - apiGroups: ["security.openshift.io"]
-    resources: ["securitycontextconstraints"]
-    resourceNames: ["anyuid"]
-    verbs: ["use"]
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: openshell-gateway-anyuid
-  namespace: {{ .Release.Namespace }}
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: Role
-  name: openshell-scc-anyuid
-subjects:
-  - kind: ServiceAccount
-    name: openshell
-    namespace: {{ .Release.Namespace }}
-  - kind: ServiceAccount
-    name: default
     namespace: {{ .Release.Namespace }}

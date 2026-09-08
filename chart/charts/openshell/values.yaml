@@ -19,7 +19,7 @@ upstream:
       secretDefaultMode: "0444"
 
   podSecurityContext:
-    fsGroup: 0
+    fsGroup: null
   securityContext:
     runAsUser: null
 
