@@ -44,6 +44,34 @@ helm upgrade --install nemoclaw "$REPO_ROOT/chart/" \
   --set openclaw.gatewayPassword="${OPENCLAW_GATEWAY_PASSWORD:-openclaw}" \
   --wait --timeout 15m
 
+# Configure the gateway's inference provider (privacy router) so agents can reach a model.
+# Runs unconditionally when creds are present — independent of PROVISION_AGENT / 45-openclaw.sh.
+API_KEY="${NEMOCLAW_PROVIDER_KEY:-${NEMOCLAW_API_KEY:-}}"
+BASE_URL="${NEMOCLAW_INFERENCE_BASE_URL:-}"
+MODEL="${NEMOCLAW_MODEL:-}"
+PROVIDER="${NEMOCLAW_INFERENCE_PROVIDER:-default}"
+if [[ -n "$BASE_URL" && -n "$MODEL" && -n "$API_KEY" ]]; then
+  if ! command -v openshell >/dev/null 2>&1; then
+    log "Installing the openshell CLI"
+    curl -LsSf https://raw.githubusercontent.com/NVIDIA/OpenShell/main/install.sh | sh >/dev/null 2>&1 \
+      || warn "openshell CLI install failed — inference provider not configured."
+  fi
+  export PATH="$PATH:$HOME/.local/bin"
+  GW_URL="${OPENSHELL_CLI_ENDPOINT:-$(oc -n openshell get route openshell-gateway -o jsonpath='https://{.spec.host}' 2>/dev/null || echo http://openshell.openshell.svc.cluster.local:8080)}"
+  openshell gateway add "$GW_URL" --local --name cluster >/dev/null 2>&1 || true
+  openshell gateway select cluster >/dev/null 2>&1 || true
+  log "Configuring inference provider '${PROVIDER}'"
+  openshell provider delete "$PROVIDER" >/dev/null 2>&1 || true
+  if openshell provider create --name "$PROVIDER" --type openai \
+       --credential OPENAI_API_KEY="$API_KEY" --config OPENAI_BASE_URL="$BASE_URL" >/dev/null 2>&1; then
+    openshell inference set --provider "$PROVIDER" --model "$MODEL" >/dev/null 2>&1 \
+      && log "Inference route set: provider=${PROVIDER} model=${MODEL}" \
+      || warn "openshell inference set failed"
+  else
+    warn "openshell provider create failed — configure inference manually."
+  fi
+fi
+
 # Install monitoring in its own namespace (separate release so {{ .Release.Namespace }} = monitoring).
 log "Installing monitoring stack"
 helm upgrade --install nemoclaw-monitoring "$REPO_ROOT/chart/charts/monitoring/" \
