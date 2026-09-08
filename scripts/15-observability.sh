@@ -24,22 +24,19 @@ declare -A OPERATOR_NS=(
   [logging]=openshift-logging
   [loki]=openshift-operators-redhat
 )
+# Detect the logging/loki channel once — both operators share the same release stream.
+# The loki-operator PackageManifest may advertise a stale defaultChannel (e.g. "alpha"),
+# so we derive the channel from cluster-logging which tracks the active release.
+export CHANNEL
+CHANNEL=$(oc get packagemanifest cluster-logging -o jsonpath='{.status.defaultChannel}' 2>/dev/null) || true
+if [[ -z "$CHANNEL" ]]; then
+  warn "Could not detect channel for cluster-logging — falling back to 'stable-6.1'"
+  CHANNEL="stable-6.1"
+fi
+log "  logging/loki channel=$CHANNEL"
+
 for op in observability otel tempo logging loki; do
   log "  ▶ $op → ${OPERATOR_NS[$op]}"
-  # logging and loki YAMLs use ${CHANNEL} — auto-detect from PackageManifest
-  if [[ "$op" == "logging" || "$op" == "loki" ]]; then
-    pkg="$op"
-    [[ "$op" == "logging" ]] && pkg="cluster-logging"
-    [[ "$op" == "loki" ]] && pkg="loki-operator"
-    export CHANNEL
-    CHANNEL=$(oc get packagemanifest "$pkg" -o jsonpath='{.status.defaultChannel}' 2>/dev/null) || true
-    if [[ -z "$CHANNEL" ]]; then
-      warn "Could not detect channel for $pkg — falling back to 'stable'"
-      CHANNEL="stable"
-    else
-      log "    detected channel=$CHANNEL for $pkg"
-    fi
-  fi
   "$HERE/lib/operator-manager.sh" -i "$op" -n "${OPERATOR_NS[$op]}"
 done
 
