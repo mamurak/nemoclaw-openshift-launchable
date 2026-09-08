@@ -1,24 +1,24 @@
-{{- /* SCC grant for the Grafana service account — needs nonroot to run as a specific UID. */ -}}
+{{- /* SCC grant for the Grafana SA — nonroot-v2 allows UID 472 with seccomp. */ -}}
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: monitoring-scc-nonroot
+  name: monitoring-scc-nonroot-v2
   namespace: {{ .Release.Namespace }}
 rules:
   - apiGroups: ["security.openshift.io"]
     resources: ["securitycontextconstraints"]
-    resourceNames: ["nonroot"]
+    resourceNames: ["nonroot-v2"]
     verbs: ["use"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: monitoring-scc-nonroot
+  name: monitoring-scc-nonroot-v2
   namespace: {{ .Release.Namespace }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: monitoring-scc-nonroot
+  name: monitoring-scc-nonroot-v2
 subjects:
   - kind: ServiceAccount
     name: grafana

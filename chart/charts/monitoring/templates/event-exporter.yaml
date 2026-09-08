@@ -41,14 +41,27 @@ spec:
       securityContext:
         runAsNonRoot: true
         seccompProfile: { type: RuntimeDefault }
-      containers:
-        - name: event-exporter
-          image: ghcr.io/resmoio/kubernetes-event-exporter:v1.7
+      initContainers:
+        - name: inject-token
+          image: registry.access.redhat.com/ubi9-minimal:9.8-1788166357
           command: ["/bin/sh", "-c"]
           args:
             - |
-              export MONITORING_TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
-              exec /kubernetes-event-exporter -conf=/data/config.yaml
+              TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
+              sed "s|\${MONITORING_TOKEN}|Bearer ${TOKEN}|g" /template/config.yaml > /rendered/config.yaml
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+          volumeMounts:
+            - name: cfg-template
+              mountPath: /template
+            - name: cfg-rendered
+              mountPath: /rendered
+      containers:
+        - name: event-exporter
+          image: ghcr.io/resmoio/kubernetes-event-exporter:v1.7
+          args: ["-conf=/data/config.yaml"]
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -57,9 +70,11 @@ spec:
             requests: { cpu: 10m, memory: 32Mi }
             limits: { cpu: 100m, memory: 128Mi }
           volumeMounts:
-            - name: cfg
+            - name: cfg-rendered
               mountPath: /data
       volumes:
-        - name: cfg
+        - name: cfg-template
           configMap: { name: event-exporter-cfg }
+        - name: cfg-rendered
+          emptyDir: {}
 {{- end }}

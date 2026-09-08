@@ -1,9 +1,17 @@
 # Standalone Grafana (OpenShift does not include Grafana)
 grafana:
   fullnameOverride: grafana
+  # Grafana runs as UID 472 — needs nonroot-v2 SCC (granted in scc-grants.yaml).
   securityContext:
     runAsNonRoot: true
-  containerSecurityContext: {}
+    seccompProfile:
+      type: RuntimeDefault
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop: ["ALL"]
+    seccompProfile:
+      type: RuntimeDefault
   initChownData:
     enabled: false
   grafana.ini:
@@ -20,6 +28,12 @@ grafana:
     accessModes: ["ReadWriteOnce"]
     size: 2Gi
   sidecar:
+    securityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: ["ALL"]
+      seccompProfile:
+        type: RuntimeDefault
     dashboards:
       enabled: true
       label: grafana_dashboard
