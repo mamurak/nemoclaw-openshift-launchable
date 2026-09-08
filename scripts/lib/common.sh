@@ -4,6 +4,15 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
+# --- ANSI colors (used by operator-manager.sh and enable-uwm.sh) ---
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m'
+
+DEBUG="${DEBUG:-false}"
+
 log()  { printf '\033[1;32m[+]\033[0m %s\n' "$*"; }
 warn() { printf '\033[1;33m[!]\033[0m %s\n' "$*" >&2; }
 die()  { printf '\033[1;31m[x]\033[0m %s\n' "$*" >&2; exit 1; }
@@ -26,4 +35,24 @@ require_var() {
 
 require_cmd() {
   command -v "$1" >/dev/null 2>&1 || die "Required command '$1' not found in PATH."
+}
+
+check_tool_exists() {
+  command -v "$1" >/dev/null 2>&1 || { echo -e "${RED}❌ $1 is required but not installed${NC}"; exit 1; }
+}
+
+check_file() {
+  local file="$1" desc="${2:-File}"
+  [[ -f "$file" ]] || { echo -e "${RED}❌ ${desc} not found: ${file}${NC}"; exit 1; }
+}
+
+check_openshift_login() {
+  oc whoami >/dev/null 2>&1 || { echo -e "${RED}❌ Not logged in to OpenShift cluster${NC}"; echo -e "${YELLOW}   Please run: oc login${NC}"; exit 1; }
+}
+
+check_openshift_prerequisites() {
+  [[ "$DEBUG" == "true" ]] && echo -e "${BLUE}🔍 Checking prerequisites...${NC}" || true
+  check_tool_exists "oc"
+  check_openshift_login
+  [[ "$DEBUG" == "true" ]] && echo -e "${GREEN}✅ Prerequisites check passed${NC}" || true
 }

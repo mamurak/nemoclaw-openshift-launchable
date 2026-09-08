@@ -2,27 +2,32 @@ Your cluster ships a full observability stack **already running** — part of th
 
 ## What you get
 
-All in a `monitoring` namespace:
+Provided by OpenShift operators across several namespaces:
 
-- **Grafana** — dashboards (login `admin` / `openclaw`), available at **`/grafana`** on the workshop site or via its OpenShift Route.
-- **Prometheus + Alertmanager** — metrics, 2-day retention, with `kube-state-metrics` + `node-exporter`.
-- **Loki** — logs (single-binary, filesystem).
-- **Tempo** — traces (OTLP `4317`/`4318`).
+- **Grafana** — dashboards (login `admin` / `openclaw`), available at **`/grafana`** on the workshop site or via its OpenShift Route (in the `monitoring` namespace).
+- **Prometheus (via Thanos Querier)** — metrics from the OpenShift Cluster Monitoring Operator (`openshift-monitoring` namespace).
+- **Alertmanager** — alert routing, also from the Cluster Monitoring Operator (`openshift-monitoring` namespace).
+- **Loki** — log aggregation via the Loki Operator (`openshift-logging` namespace).
+- **Tempo** — distributed tracing via the Tempo Operator (`observability-hub` namespace).
+- **OTEL Collector** — trace ingestion endpoint (`observability-hub` namespace).
 
-`kube-prometheus-stack` brings Prometheus, Alertmanager, Grafana, node-exporter and kube-state-metrics; **Loki** and **Tempo** are auto-wired into Grafana as datasources. A custom **Agent Fleet** dashboard tracks your sandbox pods' CPU, memory, and restarts.
+The **OpenShift Cluster Monitoring Operator** provides Prometheus (exposed through Thanos Querier) and Alertmanager; the **Loki Operator** provides log aggregation; the **Tempo Operator** provides distributed tracing; and the **OTEL Collector** handles trace ingestion. A standalone **Grafana** in the `monitoring` namespace has all datasources pre-wired. A custom **Agent Fleet** dashboard tracks your sandbox pods' CPU, memory, and restarts.
 
 ## Open it
 
-The stack is up in the `monitoring` namespace — confirm the pods are running:
+The stack is up across several namespaces — confirm the pods are running:
 
 ```bash
+oc -n openshift-monitoring get pods
+oc -n openshift-logging get pods
+oc -n observability-hub get pods
 oc -n monitoring get pods
 ```
 
 <ServiceLink service="grafana">Open Grafana</ServiceLink> and log in as `admin` / `openclaw`. You'll land on the pre-loaded **OpenShell Agent Fleet** dashboard (CPU / memory / restarts per sandbox); the built-in Kubernetes dashboards are there too. (It's served right here at **`/grafana`** on the workshop site — a same-origin proxy to Grafana's in-cluster Service.)
 
 <Callout type="note" title="Pre-deployed (and how to skip it)">
-This stack provisions with the platform. You can opt out by setting <code>DEPLOY_MONITORING=false</code> before deploying the Helm chart — Prometheus + Loki + Tempo do add CPU/memory pressure.
+The operator-managed components (Prometheus, Loki, Tempo, OTEL Collector) provision with the platform. The standalone Grafana is deployed by the Helm chart and can be opted out by setting <code>DEPLOY_MONITORING=false</code>.
 </Callout>
 
 ## Watch the fleet

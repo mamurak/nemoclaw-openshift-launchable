@@ -17,9 +17,9 @@ const FLEET = (process.env.FLEET || "logs,metrics,traces,events,analyst").split(
 // The agent runs it (real data from its real backend, via curl under its egress policy) and
 // interprets the result; the writer synthesizes. Backends are env-overridable.
 const NS = process.env.INCIDENT_NS || "demo";
-const PROM = process.env.PROM_HOST || "kps-prometheus.monitoring.svc.cluster.local:9090";
-const LOKI = process.env.LOKI_HOST || "loki.monitoring.svc.cluster.local:3100";
-const TEMPO = process.env.TEMPO_HOST || "tempo.monitoring.svc.cluster.local:3200";
+const PROM = process.env.PROM_HOST || "https://thanos-querier.openshift-monitoring.svc.cluster.local:9091";
+const LOKI = process.env.LOKI_HOST || "https://logging-loki-gateway-http.openshift-logging.svc.cluster.local:8080";
+const TEMPO = process.env.TEMPO_HOST || "https://tempo-tempostack-gateway.observability-hub.svc.cluster.local:8080";
 const TQ = "node /sandbox/.agents/skills/cluster-telemetry/tq.js";
 // Built per-request: Loki query_range needs an explicit [start,end] window (ns), so we stamp
 // the last hour here. metrics uses an instant query (no window). `events` reads the k8s events
@@ -28,13 +28,13 @@ function buildProbes(): Record<string, { url: string; hint: string }> {
   const ms = Date.now();
   const range = `&start=${ms - 3600000}000000&end=${ms}000000&limit=15`;
   return {
-    metrics: { url: `http://${PROM}/api/v1/query?query=sum%20by%20(code)%20(rate(shop_requests_total%5B2m%5D))' 'http://${PROM}/api/v1/query?query=sum(rate(shop_request_duration_ms_sum%5B2m%5D))%2Fsum(rate(shop_request_duration_ms_count%5B2m%5D))`,
+    metrics: { url: `${PROM}/api/v1/query?query=sum%20by%20(code)%20(rate(shop_requests_total%5B2m%5D))' '${PROM}/api/v1/query?query=sum(rate(shop_request_duration_ms_sum%5B2m%5D))%2Fsum(rate(shop_request_duration_ms_count%5B2m%5D))`,
       hint: "first the request rate by HTTP code (a spike in 5xx is the error rate vs 200s), then the average request latency in ms" },
-    logs: { url: `http://${LOKI}/loki/api/v1/query_range?query=%7Bapp%3D%22shop-app%22%7D%20%7C%3D%20%22error%22${range}`,
+    logs: { url: `${LOKI}/api/logs/v1/application/loki/api/v1/query_range?query=%7Bapp%3D%22shop-app%22%7D%20%7C%3D%20%22error%22${range}`,
       hint: "the app's recent ERROR log lines (e.g. 'checkout failed: payment provider returned 503') — what the app itself says is wrong" },
-    events: { url: `http://${LOKI}/loki/api/v1/query_range?query=%7Bjob%3D%22kubernetes-event-exporter%22%7D%20%7C%3D%20%22${NS}%22${range}`,
+    events: { url: `${LOKI}/api/logs/v1/infrastructure/loki/api/v1/query_range?query=%7Bjob%3D%22kubernetes-event-exporter%22%7D%20%7C%3D%20%22${NS}%22${range}`,
       hint: "recent Kubernetes events for the namespace — ESPECIALLY any recent CHANGE: a Deployment scaled down or up (e.g. 'Scaled down replica set payments-… to 0', pods Killing/Created). Report the most recent such change and its time — a dependency scaled to 0 (or a deploy) that coincides with when the errors began is the prime suspect ('what changed?'). Name the specific workload that changed." },
-    traces: { url: `http://${TEMPO}/api/search?q=${encodeURIComponent('{ resource.service.name = "shop" && status = error }')}&limit=10`,
+    traces: { url: `${TEMPO}/api/traces/v1/dev/tempo/api/search?q=${encodeURIComponent('{ resource.service.name = "shop" && status = error }')}&limit=10`,
       hint: "recent ERROR traces for the shop service — the failing span (e.g. charge-payment) shows WHERE in the request path it breaks" },
   };
 }

@@ -6,9 +6,12 @@ The cluster is **Red Hat OpenShift** — enterprise Kubernetes with Routes, Secu
 
 ```text
 OpenShift cluster
-├── openshell namespace     ← gateway + agent sandboxes
-├── monitoring namespace    ← Prometheus, Grafana, Loki, Tempo
-└── your agent (Part IV)    ← the sandbox you create
+├── openshell namespace              ← gateway + agent sandboxes
+├── openshift-monitoring namespace   ← Prometheus (Thanos Querier), Alertmanager
+├── openshift-logging namespace      ← Loki Operator (log aggregation)
+├── observability-hub namespace      ← Tempo Operator, OTEL Collector (tracing)
+├── monitoring namespace             ← Grafana (dashboards)
+└── your agent (Part IV)             ← the sandbox you create
 ```
 
 ## Inspect it live

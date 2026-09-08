@@ -6,10 +6,10 @@ You've built one sealed agent, given it a brain, skills from your own registry, 
 
 When something breaks, you reach for four signals — **logs, metrics, traces, and the cluster's own events**. So the fleet is four read-only specialists plus a lead analyst:
 
-- **logs** 🔎 — reads **Loki**, and can reach `loki.monitoring.svc:3100` and nothing else.
-- **metrics** 📈 — reads **Prometheus**, scoped to `…prometheus…:9090` only.
-- **traces** 🧵 — reads **Tempo**, scoped to `tempo.monitoring.svc:3200` only.
-- **events** 🛎️ — reads **Kubernetes events** (shipped into Loki by an event-exporter), scoped to Loki only — the control plane's own account of what's wrong (e.g. "Failed to pull image …").
+- **logs** 🔎 — reads **Loki** (via the Loki Operator gateway), and can reach `logging-loki-gateway-http.openshift-logging.svc.cluster.local:8080` and nothing else.
+- **metrics** 📈 — reads **Prometheus** (via Thanos Querier), scoped to `thanos-querier.openshift-monitoring.svc.cluster.local:9091` only.
+- **traces** 🧵 — reads **Tempo** (via the Tempo gateway), scoped to `tempo-tempostack-gateway.observability-hub.svc.cluster.local:8080` only.
+- **events** 🛎️ — reads **Kubernetes events** (shipped into Loki by an event-exporter), scoped to the Loki Operator gateway only — the control plane's own account of what's wrong (e.g. "Failed to pull image …").
 - **analyst** 🧠 — **no egress at all**; it concludes the others' findings into a root cause and a recommended fix.
 
 Each agent's **policy is specific to its tool** — the metrics agent literally cannot read logs, the analyst cannot reach the network. That's not a limitation to work around; it *is* the product: a fleet you can hand a production incident without widening anyone's blast radius, and prove it from the audit log.

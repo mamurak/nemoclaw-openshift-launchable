@@ -11,7 +11,7 @@ const KUBECONFIG = process.env.KUBECONFIG || "";
 const env = { ...process.env, ...(KUBECONFIG ? { KUBECONFIG } : {}), PATH: `${process.env.PATH ?? ""}:/usr/local/bin:/usr/bin` };
 const NS = "demo", APP = "shop-app";
 const KDIR = process.env.DEMO_APP_MANIFESTS || "/app/manifests/demo-app";
-const PROM = process.env.PROM_HOST || "kps-prometheus.monitoring.svc.cluster.local:9090";
+const PROM = process.env.PROM_HOST || "https://thanos-querier.openshift-monitoring.svc.cluster.local:9091";
 
 function kubectl(args: string[], timeoutMs = 60_000): Promise<{ code: number | null; out: string }> {
   return new Promise((resolve) => {
@@ -23,13 +23,24 @@ function kubectl(args: string[], timeoutMs = 60_000): Promise<{ code: number | n
   });
 }
 
-// The host can't reach in-cluster ClusterIPs, so we curl from inside the cluster via the
-// loadgen pod (it has curl) — to read Prometheus from inside the cluster.
-function inCluster(url: string) {
-  return kubectl(["-n", NS, "exec", `deploy/loadgen`, "--", "curl", "-s", "-m", "6", url], 20_000);
+async function promQuery(query: string): Promise<{ code: number | null; out: string }> {
+  const { monitoringHeaders } = await import("@/lib/monitoring");
+  const url = `${PROM}/api/v1/query?query=${encodeURIComponent(query)}`;
+  try {
+    const res = await fetch(url, {
+      headers: monitoringHeaders(),
+      // @ts-expect-error -- Node fetch supports this for self-signed certs
+      dispatcher: new (await import("undici")).Agent({ connect: { rejectUnauthorized: false } }),
+    });
+    const out = await res.text();
+    return { code: res.ok ? 0 : 1, out };
+  } catch (e) {
+    return { code: 1, out: String(e) };
+  }
 }
+
 async function promRps(): Promise<Record<string, number>> {
-  const r = await inCluster(`http://${PROM}/api/v1/query?query=${encodeURIComponent("sum by (code) (rate(shop_requests_total[30s]))")}`);
+  const r = await promQuery("sum by (code) (rate(shop_requests_total[30s]))");
   const rps: Record<string, number> = {};
   try { for (const s of JSON.parse(r.out)?.data?.result ?? []) rps[s.metric.code] = parseFloat(s.value[1]) || 0; } catch { /* */ }
   return rps;

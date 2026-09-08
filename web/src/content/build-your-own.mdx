@@ -8,17 +8,17 @@ every call in the audit log. Here are concrete, genuinely-new directions to take
 You already have logs, metrics, traces, and events. Add a fifth that reads **Alertmanager** —
 what's *already firing* — so the fleet starts from the alerts, not just raw signals.
 
-1. **Spec** — one line in `fleet.txt` (Alertmanager is part of the kube-prometheus stack):
+1. **Spec** — one line in `fleet.txt` (Alertmanager is part of the OpenShift Cluster Monitoring Operator):
 
    ```text
-   alerts   kps-kube-prometheus-stack-alertmanager.monitoring.svc.cluster.local:9093   -
+   alerts   alertmanager-main.openshift-monitoring.svc.cluster.local:9094   -
    ```
 2. **Soul** — `manifests/openclaw/fleet-roles/alerts/{IDENTITY.md,SOUL.md}`: "you read firing
    alerts only; surface alertname, severity, and the object."
 3. **Probe** — add to `buildProbes()` in the orchestrator:
 
    ```text
-   alerts: http://<alertmanager>:9093/api/v2/alerts
+   alerts: http://<alertmanager>:9094/api/v2/alerts
    ```
    `tq.js` already renders JSON arrays compactly. `fleet.sh up` does the rest.
 

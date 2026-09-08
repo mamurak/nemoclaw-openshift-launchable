@@ -5,18 +5,18 @@ You don't want to repeat *Create Your Agent* → *Give It a Brain* → *Identity
 `fleet.txt` is the whole fleet in one file — **one agent per line, three whitespace-separated columns**:
 
 ```text
-# name      backend(host:port, or "-")                              skill(@scope/name, or "-")
-logs        loki.monitoring.svc.cluster.local:3100                  -
-metrics     kps-prometheus.monitoring.svc.cluster.local:9090   -
-traces      tempo.monitoring.svc.cluster.local:3200                 -
-events      loki.monitoring.svc.cluster.local:3100                  -
-analyst     -                                                       -
+# name      backend(host:port, or "-")                                              skill(@scope/name, or "-")
+logs        logging-loki-gateway-http.openshift-logging.svc.cluster.local:8080      -
+metrics     thanos-querier.openshift-monitoring.svc.cluster.local:9091              -
+traces      tempo-tempostack-gateway.observability-hub.svc.cluster.local:8080       -
+events      logging-loki-gateway-http.openshift-logging.svc.cluster.local:8080      -
+analyst     -                                                                       -
 ```
 
 Each column:
 
 - **`name`** — the agent's name. It's also the folder `manifests/openclaw/fleet-roles/<name>/`, where its `IDENTITY.md` and `SOUL.md` live. So `logs` becomes a sandbox named `logs` with the persona from `fleet-roles/logs/`.
-- **`backend`** — the **single** `host:port` this agent's egress policy will allow (its one tool). `loki…:3100` for the logs agent, Prometheus `:9090` for metrics, Tempo `:3200` for traces, and `loki…:3100` again for `events` (which reads the Kubernetes event stream an event-exporter ships into Loki). Use **`-`** for *no egress* — that's the `analyst`, which only reasons over what the others found.
+- **`backend`** — the **single** `host:port` this agent's egress policy will allow (its one tool). The Loki Operator gateway `:8080` for the logs agent, Thanos Querier `:9091` for metrics, the Tempo gateway `:8080` for traces, and the Loki gateway again for `events` (which reads the Kubernetes event stream an event-exporter ships into Loki). Use **`-`** for *no egress* — that's the `analyst`, which only reasons over what the others found.
 - **`skill`** — an optional registry skill to install as a first-class tool (e.g. a `@workshop/promql` skill giving `promql(query)` instead of hand-rolled `curl`). **`-`** means none — the agent still works, querying its backend via the instructions in its `SOUL.md`. Publish a skill with the *Skills & Governance* flow, then drop `@workshop/<name>` in this column.
 
 <Callout type="note" title="Columns are whitespace-separated, not colon-separated">
@@ -84,11 +84,11 @@ network_policies:
   in-cluster-registry: { … }                 # every agent: install skills from your registry
   tool-egress:
     name: tool-egress
-    endpoints: [ { host: kps-prometheus.monitoring.svc.cluster.local, port: 9090, access: full } ]
+    endpoints: [ { host: thanos-querier.openshift-monitoring.svc.cluster.local, port: 9091, access: full } ]
     binaries: [ { path: /usr/bin/node }, { path: /usr/bin/curl } ]
 ```
 
-So `metrics` can reach Prometheus and nothing else; `logs` and `events` each get Loki:3100 and nothing else; `analyst` gets **no `tool-egress` at all**. Try to make one reach another's backend and the proxy denies it — visible on the [Live](/learn/live) **Policy decisions** tab.
+So `metrics` can reach Thanos Querier and nothing else; `logs` and `events` each get the Loki gateway and nothing else; `analyst` gets **no `tool-egress` at all**. Try to make one reach another's backend and the proxy denies it — visible on the [Live](/learn/live) **Policy decisions** tab.
 
 ## Each agent's soul — the role
 
@@ -96,18 +96,18 @@ The same `IDENTITY.md` / `SOUL.md` files from *Identity & Soul*, one set per spe
 
 ```markdown
 # Scout 🔎 — logs/SOUL.md
-Backend: Loki. Read the pods' OWN log output:  {namespace="demo"}
+Backend: Loki Operator gateway. Read the pods' OWN log output:  {namespace="demo"}
 → which pods are logging, the error lines, and which new pods are silent (never started).
 
 # Gauge 📈 — metrics/SOUL.md
-Backend: Prometheus. Quantify the fault:  kube_pod_container_status_waiting_reason{namespace="demo"}
+Backend: Thanos Querier. Quantify the fault:  kube_pod_container_status_waiting_reason{namespace="demo"}
 and kube_pod_container_info{...} → the waiting reason + healthy-vs-failing image. Numbers, not narratives.
 
 # Trace 🧵 — traces/SOUL.md
-Backend: Tempo. Search recent traces of the service → is the new version serving any traffic at all?
+Backend: Tempo gateway. Search recent traces of the service → is the new version serving any traffic at all?
 
 # Probe 🛎️ — events/SOUL.md
-Backend: Loki — but a DIFFERENT stream than Scout: the Kubernetes event feed an event-exporter ships in,
+Backend: Loki Operator gateway — but a DIFFERENT stream than Scout: the Kubernetes event feed an event-exporter ships in,
   {job="kubernetes-event-exporter"} |= "demo"  → the control plane's own words ("Failed to pull image …").
 
 # Sage 🧠 — analyst/SOUL.md
