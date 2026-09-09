@@ -27,11 +27,7 @@ async function promQuery(query: string): Promise<{ code: number | null; out: str
   const { monitoringHeaders } = await import("@/lib/monitoring");
   const url = `${PROM}/api/v1/query?query=${encodeURIComponent(query)}`;
   try {
-    const res = await fetch(url, {
-      headers: monitoringHeaders(),
-      // @ts-expect-error -- Node fetch supports this for self-signed certs
-      dispatcher: new (await import("undici")).Agent({ connect: { rejectUnauthorized: false } }),
-    });
+    const res = await fetch(url, { headers: monitoringHeaders() });
     const out = await res.text();
     return { code: res.ok ? 0 : 1, out };
   } catch (e) {
