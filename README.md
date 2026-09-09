@@ -312,6 +312,17 @@ helm uninstall loki -n openshift-logging
 helm uninstall minio -n observability-hub
 ```
 
+**Step 3b: Remove orphaned cluster-scoped RBAC (only if reinstalling)**
+
+Helm uninstall (Steps 1 and 3) removes Helm-managed ClusterRoleBindings automatically. However, if any were created manually with `oc apply` (e.g., during debugging), they will block a fresh `helm install`. Delete them before reinstalling:
+
+```bash
+# Loki tenant bindings (monitoring chart)
+oc delete clusterrolebinding monitoring-monitoring-reader-loki-tenant monitoring-grafana-loki-tenant --ignore-not-found
+# Observability chart bindings
+oc delete clusterrolebinding observability-hub-tempo-tempo-stack-traces-reader openshift-logging-loki-loki-stack-tenant-logs --ignore-not-found
+```
+
 **Step 4: Remove workshop-created namespaces**
 
 ```bash
