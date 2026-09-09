@@ -8,6 +8,9 @@ data:
   config.yaml: |
     logLevel: error
     logFormat: json
+    maxEventAgeSeconds: 300
+    kubeQPS: 50
+    kubeBurst: 100
     route:
       routes:
         - match:
@@ -20,8 +23,15 @@ data:
             job: kubernetes-event-exporter
           headers:
             Authorization: "${MONITORING_TOKEN}"
-          tlsConfig:
-            insecureSkipVerify: true
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: event-exporter-service-ca
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    service.beta.openshift.io/inject-cabundle: "true"
+data: {}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -62,6 +72,9 @@ spec:
         - name: event-exporter
           image: ghcr.io/resmoio/kubernetes-event-exporter:v1.7
           args: ["-conf=/data/config.yaml"]
+          env:
+            - name: SSL_CERT_FILE
+              value: /etc/ssl/service-ca/service-ca.crt
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -72,9 +85,14 @@ spec:
           volumeMounts:
             - name: cfg-rendered
               mountPath: /data
+            - name: service-ca
+              mountPath: /etc/ssl/service-ca
+              readOnly: true
       volumes:
         - name: cfg-template
           configMap: { name: event-exporter-cfg }
         - name: cfg-rendered
           emptyDir: {}
+        - name: service-ca
+          configMap: { name: event-exporter-service-ca }
 {{- end }}

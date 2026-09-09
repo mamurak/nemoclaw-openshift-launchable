@@ -83,7 +83,7 @@ up() {
   sleep 2
   for i in "${!NM[@]}"; do
     name="${NM[$i]}"
-    openshell sandbox create --name "$name" --policy "${POL[$i]}" --from "$IMAGE" --no-tty -- true </dev/null >"/tmp/fleet-${name}.log" 2>&1 &
+    openshell sandbox create --name "$name" --policy "${POL[$i]}" --from "$IMAGE" --env OPENCLAW_CHILD_OOM_SCORE_ADJ=0 --no-tty -- true </dev/null >"/tmp/fleet-${name}.log" 2>&1 &
   done
   echo "   …creating; waiting for each to reach Ready (they bootstrap concurrently)…"
 
