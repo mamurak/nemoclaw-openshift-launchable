@@ -98,6 +98,9 @@ up() {
       echo "   ✗ ${name} not ready — create log:"; tail -6 "/tmp/fleet-${name}.log" 2>/dev/null | grep -viE 'UNDICI|trace-warn' | sed 's/^/       /'
       continue
     fi
+    # Re-apply the policy after sandbox is ready — parallel creation with --policy
+    # has a race condition where the gateway may not store the per-sandbox policy.
+    openshell policy set "$name" --policy "${POL[$i]}" </dev/null >/dev/null 2>&1 || true
     # stage the agent's persona (IDENTITY.md / SOUL.md) from fleet-roles/<name> — the role
     if [[ -d "$ROLES/$name" ]]; then
       for f in IDENTITY.md SOUL.md BOOTSTRAP.md; do
