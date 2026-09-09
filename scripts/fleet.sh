@@ -36,7 +36,7 @@ policy_for() {                       # $1 = backend host:port (or "-")
   [[ "$be" != "-" && -n "$be" ]] && extra="
   tool-egress:
     name: tool-egress
-    endpoints: [ { host: ${host}, port: ${port}, access: full, protocol: rest } ]
+    endpoints: [ { host: ${host}, port: ${port}, access: full, protocol: rest, tls: skip } ]
     binaries: [ {path: /usr/bin/node}, {path: /usr/local/bin/node}, {path: /usr/bin/curl} ]"
   cat <<YAML
 version: 1
@@ -107,7 +107,7 @@ up() {
     # Inject a monitoring auth token for OpenShift backends (Thanos, Loki gateway, Tempo gateway)
     if [[ "${BK[$i]}" != "-" && -n "${BK[$i]}" ]]; then
       local mon_token
-      mon_token=$(oc create token monitoring-reader -n monitoring --duration=24h 2>/dev/null) || true
+      mon_token=$(kubectl create token monitoring-reader -n monitoring --duration=86400s 2>/dev/null) || true
       if [[ -n "$mon_token" ]]; then
         ox "$name" "echo '$mon_token' > /sandbox/.monitoring-token && chmod 400 /sandbox/.monitoring-token"
       fi

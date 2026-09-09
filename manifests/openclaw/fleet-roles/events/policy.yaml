@@ -48,6 +48,7 @@ network_policies:
         port: 8080
         access: full
         protocol: rest
+        tls: skip
     binaries:
       - path: /usr/bin/node
       - path: /usr/local/bin/node
