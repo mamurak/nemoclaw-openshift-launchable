@@ -27,9 +27,14 @@ function project(labels) {
 }
 
 // render one Loki line: if it's a k8s Event (from event-exporter), make it human-readable.
+// Events may arrive directly (old Loki sink) or wrapped by the ClusterLogForwarder (stdout
+// sink → container log → Loki), in which case the event JSON is inside the `message` field.
 function lokiLine(line) {
   try {
-    const e = JSON.parse(line);
+    let e = JSON.parse(line);
+    if (e && !e.reason && typeof e.message === "string" && e.message.startsWith("{")) {
+      try { e = JSON.parse(e.message); } catch { /* not nested JSON */ }
+    }
     if (e && (e.reason || e.message)) {
       const o = e.involvedObject || {};
       const obj = o.kind ? `${o.kind}/${o.name}` : (e.metadata && e.metadata.namespace) || "";

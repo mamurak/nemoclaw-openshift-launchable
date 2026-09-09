@@ -14,24 +14,10 @@ data:
     route:
       routes:
         - match:
-            - receiver: loki
+            - receiver: stdout
     receivers:
-      - name: loki
-        loki:
-          url: {{ .Values.endpoints.loki.url }}{{ .Values.endpoints.loki.infrastructurePath }}/loki/api/v1/push
-          streamLabels:
-            job: kubernetes-event-exporter
-          headers:
-            Authorization: "${MONITORING_TOKEN}"
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: event-exporter-service-ca
-  namespace: {{ .Release.Namespace }}
-  annotations:
-    service.beta.openshift.io/inject-cabundle: "true"
-data: {}
+      - name: stdout
+        stdout: {}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -51,30 +37,10 @@ spec:
       securityContext:
         runAsNonRoot: true
         seccompProfile: { type: RuntimeDefault }
-      initContainers:
-        - name: inject-token
-          image: registry.access.redhat.com/ubi9-minimal:9.8-1788166357
-          command: ["/bin/sh", "-c"]
-          args:
-            - |
-              TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
-              sed "s|\${MONITORING_TOKEN}|Bearer ${TOKEN}|g" /template/config.yaml > /rendered/config.yaml
-          securityContext:
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
-            capabilities: { drop: ["ALL"] }
-          volumeMounts:
-            - name: cfg-template
-              mountPath: /template
-            - name: cfg-rendered
-              mountPath: /rendered
       containers:
         - name: event-exporter
           image: ghcr.io/resmoio/kubernetes-event-exporter:v1.7
-          args: ["-conf=/data/config.yaml"]
-          env:
-            - name: SSL_CERT_FILE
-              value: /etc/ssl/service-ca/service-ca.crt
+          args: ["-conf=/config/config.yaml"]
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -83,16 +49,10 @@ spec:
             requests: { cpu: 10m, memory: 32Mi }
             limits: { cpu: 100m, memory: 128Mi }
           volumeMounts:
-            - name: cfg-rendered
-              mountPath: /data
-            - name: service-ca
-              mountPath: /etc/ssl/service-ca
+            - name: cfg
+              mountPath: /config
               readOnly: true
       volumes:
-        - name: cfg-template
+        - name: cfg
           configMap: { name: event-exporter-cfg }
-        - name: cfg-rendered
-          emptyDir: {}
-        - name: service-ca
-          configMap: { name: event-exporter-service-ca }
 {{- end }}

@@ -30,9 +30,9 @@ function buildProbes(): Record<string, { url: string; hint: string }> {
   return {
     metrics: { url: `${PROM}/api/v1/query?query=sum%20by%20(code)%20(rate(shop_requests_total%5B2m%5D))' '${PROM}/api/v1/query?query=sum(rate(shop_request_duration_ms_sum%5B2m%5D))%2Fsum(rate(shop_request_duration_ms_count%5B2m%5D))`,
       hint: "first the request rate by HTTP code (a spike in 5xx is the error rate vs 200s), then the average request latency in ms" },
-    logs: { url: `${LOKI}/api/logs/v1/application/loki/api/v1/query_range?query=%7Bapp%3D%22shop-app%22%7D%20%7C%3D%20%22error%22${range}`,
+    logs: { url: `${LOKI}/api/logs/v1/application/loki/api/v1/query_range?direction=backward&query=%7Bkubernetes_namespace_name%3D%22${NS}%22%7D%20%7C%3D%20%22error%22${range}`,
       hint: "the app's recent ERROR log lines (e.g. 'checkout failed: payment provider returned 503') — what the app itself says is wrong" },
-    events: { url: `${LOKI}/api/logs/v1/infrastructure/loki/api/v1/query_range?query=%7Bjob%3D%22kubernetes-event-exporter%22%7D%20%7C%3D%20%22${NS}%22${range}`,
+    events: { url: `${LOKI}/api/logs/v1/application/loki/api/v1/query_range?direction=backward&query=%7Bkubernetes_namespace_name%3D%22monitoring%22%2Ckubernetes_container_name%3D%22event-exporter%22%7D%20%7C%3D%20%22${NS}%22%20%7C%3D%20%22reason%22${range}`,
       hint: "recent Kubernetes events for the namespace — ESPECIALLY any recent CHANGE: a Deployment scaled down or up (e.g. 'Scaled down replica set payments-… to 0', pods Killing/Created). Report the most recent such change and its time — a dependency scaled to 0 (or a deploy) that coincides with when the errors began is the prime suspect ('what changed?'). Name the specific workload that changed." },
     traces: { url: `${TEMPO}/api/traces/v1/dev/tempo/api/search?q=${encodeURIComponent('{ resource.service.name = "shop" && status = error }')}&limit=10`,
       hint: "recent ERROR traces for the shop service — the failing span (e.g. charge-payment) shows WHERE in the request path it breaks" },

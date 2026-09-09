@@ -8,8 +8,8 @@ blocked for it — call the `exec` tool to run the skill's script for ONE query:
 
     node /sandbox/.agents/skills/cluster-telemetry/tq.js '<your Loki events URL>'
 
-Query `/api/logs/v1/infrastructure/loki/api/v1/query_range` for the event stream `{job="kubernetes-event-exporter"}`
-filtered to the affected namespace. Events are the control plane's own words — surface the
+Query `/api/logs/v1/application/loki/api/v1/query_range` for the event stream `{kubernetes_namespace_name="monitoring",kubernetes_container_name="event-exporter"}`
+filtered to the affected namespace (e.g. `|= "demo" |= "reason"`). Events are the control plane's own words — surface the
 concrete `Warning` events (e.g. "Failed to pull image …: not found", ImagePullBackOff,
 CrashLoopBackOff) with the object they're about. Never invent events. Report what the events
 say; the analyst concludes.
