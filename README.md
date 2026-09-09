@@ -286,54 +286,15 @@ echo "https://openclaw-ui-openshell.$(oc get ingresses.config/cluster -o jsonpat
 
 ### Delete
 
-To remove the entire deployment, run these steps in order. Each step is independent — if you only want to remove part of the stack, run only the relevant commands.
-
-**Step 1: Remove Helm releases (openshell, workshop, Grafana, event-exporter)**
+To remove the deployment, run the cleanup script. It handles Helm releases, the demo app, observability charts, cluster-scoped RBAC, and namespaces:
 
 ```bash
-helm uninstall nemoclaw -n openshell
-helm uninstall nemoclaw-monitoring -n monitoring
+./scripts/cleanup.sh
 ```
 
-**Step 2: Remove the demo app**
+> **Note:** The script does not remove the agent-sandbox CRD or observability operators — those are shared cluster resources. See below for manual removal.
 
-```bash
-oc delete -k manifests/demo-app/ --ignore-not-found
-```
-
-**Step 3: Remove the observability Helm releases (OTEL Collector, TempoStack, LokiStack, MinIO)**
-
-These were deployed by `scripts/15-observability.sh` into the `observability-hub` and `openshift-logging` namespaces:
-
-```bash
-helm uninstall otel -n observability-hub
-helm uninstall tempo -n observability-hub
-helm uninstall loki -n openshift-logging
-helm uninstall minio -n observability-hub
-```
-
-**Step 3b: Remove orphaned cluster-scoped RBAC (only if reinstalling)**
-
-Helm uninstall (Steps 1 and 3) removes Helm-managed ClusterRoleBindings automatically. However, if any were created manually with `oc apply` (e.g., during debugging), they will block a fresh `helm install`. Delete them before reinstalling:
-
-```bash
-# Loki tenant bindings (monitoring chart)
-oc delete clusterrolebinding monitoring-monitoring-reader-loki-tenant monitoring-grafana-loki-tenant --ignore-not-found
-# Observability chart bindings
-oc delete clusterrolebinding observability-hub-tempo-tempo-stack-traces-reader openshift-logging-loki-loki-stack-tenant-logs --ignore-not-found
-```
-
-**Step 4: Remove workshop-created namespaces**
-
-```bash
-for ns in openshell monitoring demo observability-hub; do
-  oc delete namespace "$ns" --ignore-not-found
-done
-```
-
-> **Note:** Do not delete `openshift-monitoring` or `openshift-logging` — these are shared OpenShift platform namespaces. The `helm uninstall loki` command in Step 3 removes the LokiStack and ClusterLogForwarder resources from `openshift-logging` without affecting the namespace itself.
-
-**Step 5: Remove the agent-sandbox CRD (optional)**
+**Remove the agent-sandbox CRD (optional)**
 
 Only remove this if no other users or projects depend on it:
 
@@ -341,7 +302,7 @@ Only remove this if no other users or projects depend on it:
 oc delete -f "https://github.com/kubernetes-sigs/agent-sandbox/releases/download/v0.4.6/manifest.yaml" --ignore-not-found
 ```
 
-**Step 6: Remove the observability operators (optional)**
+**Remove the observability operators (optional)**
 
 Only remove these if no other projects on the cluster depend on them. Each operator is uninstalled individually using the operator manager script:
 
