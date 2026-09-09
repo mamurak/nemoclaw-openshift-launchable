@@ -15,7 +15,7 @@ monitoring:
 
 workshop:
   enabled: true
-  image: quay.io/mmurakam/nemoclaw-workshop:v0.2.2
+  image: quay.io/mmurakam/nemoclaw-workshop:v0.2.3
   inference:
     baseUrl: ""
     model: ""
