@@ -110,7 +110,7 @@ up() {
     # Inject a monitoring auth token for OpenShift backends (Thanos, Loki gateway, Tempo gateway)
     if [[ "${BK[$i]}" != "-" && -n "${BK[$i]}" ]]; then
       local mon_token
-      mon_token=$(kubectl create token monitoring-reader -n monitoring --duration=86400s 2>/dev/null) || true
+      mon_token=$(kubectl create token monitoring-reader -n monitoring --duration=604800s 2>/dev/null) || true
       if [[ -n "$mon_token" ]]; then
         ox "$name" "echo '$mon_token' > /sandbox/.monitoring-token && chmod 400 /sandbox/.monitoring-token"
       fi

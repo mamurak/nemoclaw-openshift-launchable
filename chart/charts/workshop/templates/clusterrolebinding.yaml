@@ -20,7 +20,7 @@ metadata:
   namespace: demo
 rules:
   - apiGroups: [""]
-    resources: ["pods", "services", "configmaps"]
+    resources: ["pods", "services", "configmaps", "events"]
     verbs: ["get", "list", "watch", "create", "patch", "delete"]
   - apiGroups: ["apps"]
     resources: ["deployments", "deployments/scale"]
