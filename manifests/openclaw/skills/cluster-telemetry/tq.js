@@ -43,13 +43,20 @@ function project(labels) {
 function lokiLine(line) {
   try {
     let e = JSON.parse(line);
+    // ClusterLogForwarder wraps container logs in a JSON envelope — unwrap to the original entry
     if (e && !e.reason && typeof e.message === "string" && e.message.startsWith("{")) {
       try { e = JSON.parse(e.message); } catch { /* not nested JSON */ }
     }
-    if (e && (e.reason || e.message)) {
+    // K8s event (from event-exporter): has reason + involvedObject
+    if (e && e.reason) {
       const o = e.involvedObject || {};
       const obj = o.kind ? `${o.kind}/${o.name}` : (e.metadata && e.metadata.namespace) || "";
-      return `[${e.type || "?"}] ${e.reason || ""}: ${String(e.message || "").slice(0, 160)} (${obj})`;
+      return `[${e.type || "?"}] ${e.reason}: ${String(e.message || "").slice(0, 160)} (${obj})`;
+    }
+    // Structured app log: msg (common in Go/Node structured logging) or message
+    const text = e && (e.msg || e.message);
+    if (text) {
+      return `[${e.level || "?"}] ${String(text).slice(0, 180)}`;
     }
   } catch { /* not JSON — a plain log line */ }
   return String(line).slice(0, 180);
