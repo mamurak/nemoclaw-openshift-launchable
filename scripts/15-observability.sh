@@ -65,6 +65,12 @@ helm upgrade --install loki "$REPO_ROOT/deploy/observability/loki/" \
   -n openshift-logging \
   --wait --timeout 10m
 
+# helm --wait only covers the CRs; the operators start the actual pods afterwards.
+# Queries hang until the ingesters are up, so wait before agents start querying.
+log "Waiting for TempoStack + LokiStack to become Ready"
+oc wait tempostack --all -n observability-hub --for=condition=Ready --timeout=10m
+oc wait lokistack --all -n openshift-logging --for=condition=Ready --timeout=10m
+
 # --- deploy OTEL Collector ---
 log "Deploying OTEL Collector"
 helm upgrade --install otel "$REPO_ROOT/deploy/observability/otel-collector/" \
