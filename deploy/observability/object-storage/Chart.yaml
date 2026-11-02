@@ -1,0 +1,8 @@
+apiVersion: v2
+name: observability-object-storage
+description: S3-compatible object storage (RustFS) for observability data (Tempo traces, Loki logs)
+type: application
+version: 0.2.0
+appVersion: "1.0.4"
+
+# No external dependencies - using our own templates with configurable namespace

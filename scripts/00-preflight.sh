@@ -28,6 +28,15 @@ OC_VER="$(oc version --client 2>/dev/null | head -1 || echo unknown)"
 HELM_VER="$(helm version --short 2>/dev/null || echo unknown)"
 log "oc: ${OC_VER}  |  helm: ${HELM_VER}"
 
+# Helm < 3.18 ignores the openshell wrapper's null overrides for the upstream chart, so the
+# gateway renders with hardcoded UID/fsGroup 1000, restricted-v2 rejects the pod, and
+# `helm --wait` hangs until timeout.
+HELM_MIN="3.18.0"
+HELM_SEMVER="$(helm version --template '{{.Version}}' 2>/dev/null | sed 's/^v//; s/[-+].*//')"
+if [[ "$(printf '%s\n' "$HELM_MIN" "$HELM_SEMVER" | sort -V | head -1)" != "$HELM_MIN" ]]; then
+  die "helm ${HELM_SEMVER:-unknown} is too old — need >= ${HELM_MIN} (older versions drop the gateway's securityContext overrides)."
+fi
+
 # --- remote inference endpoint (OPTIONAL) ---
 # Hybrid model config: if these are set the agent is pre-configured; if not, it deploys
 # UNCONFIGURED and the user adds a provider/model/key in the OpenClaw UI. So warn, never fail —

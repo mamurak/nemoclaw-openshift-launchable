@@ -1,13 +1,13 @@
 # Tempo TempoStack Helm Chart
 
-This directory contains the Helm chart for deploying a TempoStack instance that uses a shared MinIO storage backend. This chart is designed to work with the Tempo Operator and depends on the shared MinIO instance deployed by the main MinIO chart.
+This directory contains the Helm chart for deploying a TempoStack instance that uses a shared S3-compatible storage backend (RustFS). This chart is designed to work with the Tempo Operator and depends on the shared RustFS instance deployed by the `object-storage` chart.
 
 ## Overview
 
 This configuration includes:
 - **TempoStack Instance**: Multitenant Tempo configuration
-- **Shared MinIO Integration**: Uses the shared MinIO instance for trace storage
-- **Storage Secrets**: Credentials and connection details for the shared MinIO
+- **Shared S3 Storage**: Uses the shared RustFS instance for trace storage
+- **Storage Secrets**: Credentials and connection details for the shared RustFS instance
 - **RBAC**: Cluster roles for trace access
 
 ## Prerequisites
@@ -17,12 +17,9 @@ This configuration includes:
    helm install tempo-operator ../tempo-operator/
    ```
 
-2. **Shared MinIO Instance**: The shared MinIO instance must be deployed first:
+2. **Shared object storage**: The shared RustFS instance must be deployed first:
    ```bash
-   # Deploy the shared MinIO instance
-   make install-minio
-   # OR
-   helm install minio-observability-storage ../../minio/
+   helm upgrade --install object-storage ../object-storage/ -n observability-hub
    ```
 
 3. **Namespace**: Ensure the `observability-hub` namespace exists:
@@ -40,23 +37,22 @@ helm install tempo-stack .
 
 This will create:
 - TempoStack instance configured for multitenancy with Gateway access
-- Storage secrets that reference the shared MinIO instance
+- Storage secrets that reference the shared RustFS instance
 - Required RBAC permissions
-- Integration with the existing MinIO deployment
 
 ## Configuration Details
 
-### Shared MinIO Storage
-- **Deployment**: Uses the shared `minio-observability-storage` instance
-- **Service**: `minio-observability-storage` ClusterIP service on port 9000
-- **Credentials**: References the shared MinIO credentials
-  - User: `admin` (default MinIO user)
-  - Password: `minio123` (default MinIO password)
-  - Bucket: `tempo` (created automatically via dynamic bucket creation)
+### Shared S3 Storage (RustFS)
+- **Deployment**: Uses the shared `observability-object-storage` instance
+- **Service**: `observability-object-storage` ClusterIP service on port 9000 (console on 9001)
+- **Credentials**: `s3.accessKeyId` / `s3.accessKeySecret` in `values.yaml` (must match `../object-storage/values.yaml`)
+  - User: `admin`
+  - Password: `observability123`
+  - Bucket: `tempo` (created by the object-storage chart's bucket-init Job)
 
 ### TempoStack Configuration
 - **Name**: `tempostack`
-- **Storage**: Uses shared MinIO storage (no local PVC)
+- **Storage**: Uses shared RustFS storage (no local PVC)
 - **Resources**: 10Gi memory, 5000m CPU limits
 - **Multitenancy**: Enabled with OpenShift mode
 - **Tenant**: `dev` tenant pre-configured
@@ -82,19 +78,20 @@ oc get services -n observability-hub -l app.kubernetes.io/component=gateway
 
 ## Security Considerations
 
-⚠️ **Important**: The default MinIO credentials are for development/testing only. For production deployments:
+⚠️ **Important**: The default object storage credentials are for development/testing only. For production deployments:
 
-1. Change the credentials in the shared MinIO chart (`deploy/helm/minio/`)
-2. Update the corresponding values in the Tempo storage secrets
-3. Consider using external S3-compatible storage instead of MinIO
+1. Change the credentials in the shared object-storage chart (`../object-storage/values.yaml`)
+2. Update `s3.accessKeyId` / `s3.accessKeySecret` in this chart's `values.yaml`
+3. Consider using external S3-compatible storage (e.g. ODF / AWS S3) by pointing `s3.endpoint` at it
 
 ## Customization
 
 ### Changing Storage Size
-Edit the shared MinIO chart (`deploy/helm/minio/values.yaml`) to change the storage size:
+Edit the shared object-storage chart (`../object-storage/values.yaml`) to change the storage size:
 ```yaml
-persistence:
-  size: 20Gi  # Change as needed
+storage:
+  persistence:
+    size: 20Gi  # Change as needed
 ```
 
 ### Adding More Tenants
@@ -121,11 +118,11 @@ resources:
 
 ## Troubleshooting
 
-### Shared MinIO Not Available
-Check if the shared MinIO instance is running:
+### Shared Object Storage Not Available
+Check if the shared RustFS instance is running:
 ```bash
-kubectl get pods -n observability-hub | grep minio-observability-storage
-kubectl get pvc -n observability-hub | grep minio
+kubectl get pods -n observability-hub | grep observability-object-storage
+kubectl get pvc -n observability-hub | grep observability-object-storage
 ```
 
 ### TempoStack Not Ready
@@ -140,9 +137,9 @@ kubectl get tempostack tempostack -n observability-hub -o yaml
 ```
 
 ### Storage Secret Issues
-Verify the MinIO secret is properly configured:
+Verify the Tempo S3 secret is properly configured:
 ```bash
-kubectl get secret minio-observability-storage -n observability-hub -o yaml
+kubectl get secret tempo-s3-credentials -n observability-hub -o yaml
 ```
 
 ## Integration with Applications

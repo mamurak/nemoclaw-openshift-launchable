@@ -1,16 +1,16 @@
-{{- if .Values.minio.service.enabled }}
-{{- $namespace := include "minio.namespace" . }}
+{{- if .Values.storage.service.enabled }}
+{{- $namespace := include "object-storage.namespace" . }}
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
-  name: {{ include "minio.fullname" . }}-api
+  name: {{ include "object-storage.fullname" . }}-api
   namespace: {{ $namespace }}
   labels:
-    {{- include "minio.labels" . | nindent 4 }}
+    {{- include "object-storage.labels" . | nindent 4 }}
 spec:
   to:
     kind: Service
-    name: {{ include "minio.fullname" . }}
+    name: {{ include "object-storage.fullname" . }}
     weight: 100
   port:
     targetPort: api
@@ -21,14 +21,14 @@ spec:
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
-  name: {{ include "minio.fullname" . }}-webui
+  name: {{ include "object-storage.fullname" . }}-webui
   namespace: {{ $namespace }}
   labels:
-    {{- include "minio.labels" . | nindent 4 }}
+    {{- include "object-storage.labels" . | nindent 4 }}
 spec:
   to:
     kind: Service
-    name: {{ include "minio.fullname" . }}
+    name: {{ include "object-storage.fullname" . }}
     weight: 100
   port:
     targetPort: webui

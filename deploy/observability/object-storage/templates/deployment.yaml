@@ -1,0 +1,92 @@
+{{/*
+RustFS Deployment - Deployed to observability-hub namespace
+*/}}
+{{- $namespace := include "object-storage.namespace" . }}
+{{- $deploymentName := include "object-storage.fullname" . }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $deploymentName }}
+  namespace: {{ $namespace }}
+  labels:
+    {{- include "object-storage.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  # RWO PVC — the old pod must release the volume before the new one starts
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "object-storage.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "object-storage.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.storage.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+      - name: rustfs
+        image: {{ .Values.storage.image }}
+        env:
+        - name: RUSTFS_VOLUMES
+          value: /data
+        - name: RUSTFS_ADDRESS
+          value: ":{{ .Values.storage.service.apiPort }}"
+        - name: RUSTFS_CONSOLE_ADDRESS
+          value: ":{{ .Values.storage.service.port }}"
+        - name: RUSTFS_CONSOLE_ENABLE
+          value: "true"
+        ports:
+        - name: api
+          containerPort: {{ .Values.storage.service.apiPort }}
+          protocol: TCP
+        - name: webui
+          containerPort: {{ .Values.storage.service.port }}
+          protocol: TCP
+        envFrom:
+        - secretRef:
+            name: {{ include "object-storage.fullname" . }}
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: api
+          initialDelaySeconds: 10
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /health/ready
+            port: api
+          initialDelaySeconds: 5
+          periodSeconds: 15
+        # No runAsUser: restricted-v2 assigns a UID from the namespace range
+        # (the image's default UID 10001 is rejected).
+        securityContext:
+          runAsNonRoot: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+          seccompProfile:
+            type: RuntimeDefault
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        volumeMounts:
+        - name: data
+          mountPath: /data
+        # The image's /logs is owned by UID 10001 and not writable under an arbitrary UID
+        - name: logs
+          mountPath: /logs
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: {{ include "object-storage.fullname" . }}-data
+      - name: logs
+        emptyDir: {}

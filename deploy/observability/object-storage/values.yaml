@@ -1,0 +1,35 @@
+# RustFS (S3-compatible) object storage for Tempo/Loki
+# Always deploys to observability-hub namespace
+
+storage:
+  image: quay.io/rustfs/rustfs:1.0.4
+
+  # Root credentials (admin access). Must match s3.accessKeyId / s3.accessKeySecret
+  # in deploy/observability/tempo/values.yaml and deploy/observability/loki/values.yaml.
+  # RustFS requires the secret key to be at least 8 characters.
+  secret:
+    user: admin
+    password: observability123
+
+  # Service configuration
+  service:
+    enabled: true
+    type: ClusterIP
+    port: 9001
+    apiPort: 9000
+
+  # Bucket configuration - array of bucket names
+  buckets: ["tempo", "loki"]
+
+  # Image used by the bucket-init Job
+  bucketInitImage: docker.io/amazon/aws-cli:2.39.3
+
+  # Persistent volume configuration
+  persistence:
+    size: 5Gi
+    # Optional: bind PVC to a named StorageClass (e.g. gp3). If unset, the
+    # cluster default StorageClass is used — required on clouds where no default exists.
+    # storageClassName: gp3
+
+  # Security Context - empty to let OpenShift assign UID/fsGroup
+  podSecurityContext: {}

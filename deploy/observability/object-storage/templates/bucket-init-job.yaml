@@ -1,0 +1,76 @@
+{{- if .Values.storage.buckets }}
+{{- $namespace := include "object-storage.namespace" . }}
+{{- $endpoint := printf "http://%s.%s.svc.cluster.local:%v" (include "object-storage.fullname" .) $namespace .Values.storage.service.apiPort }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Release.Name }}-bucket-init
+  namespace: {{ $namespace }}
+  labels:
+    app.kubernetes.io/name: {{ include "object-storage.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: bucket-init
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "1"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "object-storage.name" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: bucket-init
+    spec:
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: bucket-init
+        image: {{ .Values.storage.bucketInitImage }}
+        command:
+        - /bin/sh
+        - -c
+        - |
+          set -e
+          echo "Waiting for object storage to be ready..."
+          until aws --endpoint-url {{ $endpoint }} s3api list-buckets >/dev/null; do
+            echo "Still waiting for object storage..."
+            sleep 5
+          done
+          echo "Object storage is ready. Creating buckets..."
+          {{- range .Values.storage.buckets }}
+          if aws --endpoint-url {{ $endpoint }} s3api head-bucket --bucket {{ . }} 2>/dev/null; then
+            echo "Bucket {{ . }} already exists"
+          else
+            echo "Creating bucket: {{ . }}"
+            aws --endpoint-url {{ $endpoint }} s3api create-bucket --bucket {{ . }}
+          fi
+          {{- end }}
+          echo "Bucket creation completed successfully"
+        env:
+        - name: HOME
+          value: /tmp
+        - name: AWS_DEFAULT_REGION
+          value: us-east-1
+        - name: AWS_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "object-storage.fullname" . }}
+              key: RUSTFS_ACCESS_KEY
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "object-storage.fullname" . }}
+              key: RUSTFS_SECRET_KEY
+        securityContext:
+          runAsNonRoot: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+          seccompProfile:
+            type: RuntimeDefault
+{{- end }}

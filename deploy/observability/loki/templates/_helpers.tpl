@@ -51,11 +51,11 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
-MinIO labels for Loki storage components
+Labels for Loki storage components (S3 credentials)
 */}}
-{{- define "loki-stack.minioLabels" -}}
+{{- define "loki-stack.storageLabels" -}}
 helm.sh/chart: {{ include "loki-stack.chart" . }}
-app.kubernetes.io/name: minio-loki
+app.kubernetes.io/name: loki-storage
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
@@ -63,14 +63,6 @@ app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 app.kubernetes.io/component: storage
 app.kubernetes.io/part-of: observability
-{{- end }}
-
-{{/*
-MinIO selector labels for Loki
-*/}}
-{{- define "loki-stack.minioSelectorLabels" -}}
-app.kubernetes.io/name: minio-loki
-app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*

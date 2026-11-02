@@ -14,8 +14,8 @@ helm uninstall nemoclaw-monitoring -n monitoring 2>/dev/null && log "  nemoclaw-
 log "Step 2/4: Removing the demo app"
 oc delete -k "$HERE/../manifests/demo-app/" --ignore-not-found 2>/dev/null && log "  demo app removed" || warn "  demo app not found"
 
-log "Step 3/4: Removing observability Helm releases (OTEL, Tempo, Loki, MinIO)"
-for rel_ns in otel:observability-hub tempo:observability-hub loki:openshift-logging minio:observability-hub; do
+log "Step 3/4: Removing observability Helm releases (OTEL, Tempo, Loki, object storage)"
+for rel_ns in otel:observability-hub tempo:observability-hub loki:openshift-logging object-storage:observability-hub; do
   rel="${rel_ns%%:*}"; ns="${rel_ns##*:}"
   helm uninstall "$rel" -n "$ns" 2>/dev/null && log "  $rel uninstalled from $ns" || warn "  $rel release not found in $ns"
 done

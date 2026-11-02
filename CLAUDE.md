@@ -58,8 +58,8 @@ shellcheck --severity=error --external-sources scripts/deploy.sh scripts/00-pref
 
 ### Deployment (`scripts/deploy.sh`)
 Entry point for deploying the stack. It:
-1. Runs preflight checks (`oc whoami`, `helm version`, `yq`, `jq`, `envsubst`, inference endpoints)
-2. Deploys the OpenShift observability stack via `scripts/15-observability.sh` (operators + MinIO + Tempo + Loki + OTEL)
+1. Runs preflight checks (`oc whoami`, `helm version` ≥ 3.18, `yq`, `jq`, `envsubst`, inference endpoints)
+2. Deploys the OpenShift observability stack via `scripts/15-observability.sh` (operators + RustFS + Tempo + Loki + OTEL)
 3. Creates namespaces out-of-band (not Helm-managed — `helm uninstall` would delete them)
 4. Applies the agent-sandbox CRD out-of-band (cluster-scoped, pinned to v0.4.6)
 5. Runs `helm upgrade --install` for the openshell + workshop subcharts
@@ -70,7 +70,7 @@ Entry point for deploying the stack. It:
 Deploys the OpenShift operator-based monitoring backend:
 1. Installs 5 operators via `scripts/lib/operator-manager.sh`: Cluster Observability, OpenTelemetry, Tempo, Logging, Loki
 2. Enables User Workload Monitoring via `scripts/lib/enable-uwm.sh`
-3. Deploys MinIO (S3 backend for Loki + Tempo) in `observability-hub` namespace
+3. Deploys RustFS (S3 backend for Loki + Tempo, chart `deploy/observability/object-storage/`) in `observability-hub` namespace
 4. Deploys TempoStack, LokiStack + ClusterLogForwarder, OTEL Collector via Helm charts in `deploy/observability/`
 
 ### Helm chart (`chart/`)
@@ -125,3 +125,5 @@ python3 -c "import yaml,json,sys; json.dump(yaml.safe_load(open('policies/opencl
 - **Monitoring backends require bearer token auth** — all queries to Thanos Querier, Loki gateway, and Tempo gateway need an SA token with `cluster-monitoring-view`. The `monitoring-reader` SA in the `monitoring` namespace provides this. Fleet agents get a 24h token injected at sandbox creation.
 - **Loki multi-tenant paths** — application logs use `/api/logs/v1/application/...`, infrastructure logs use `/api/logs/v1/infrastructure/...`. Both the `logs` agent and `events` agent query the application tenant. The event-exporter writes K8s events to stdout; the ClusterLogForwarder ships them to Loki as application logs under `{kubernetes_namespace_name="monitoring",kubernetes_container_name="event-exporter"}`.
 - **Event-exporter uses stdout, not direct Loki push** — the upstream event-exporter v1.7 Loki sink has a bug where `Send()` uses `http.DefaultClient` (no timeout), causing pushes to hang and block all subsequent events. The stdout receiver bypasses this; events flow through the ClusterLogForwarder pipeline instead.
+- **Object storage is RustFS, not MinIO** — MinIO OSS was archived and its `quay.io/minio/*` images are no longer pullable. `deploy/observability/object-storage/` runs `quay.io/rustfs/rustfs` as a single pod. Do not set `runAsUser`: the image's default UID 10001 is rejected by `restricted-v2`, so OpenShift assigns the UID and fsGroup. S3 credentials must match across `object-storage/values.yaml` and the `s3:` block in `tempo/values.yaml` + `loki/values.yaml`. Console is served under `/rustfs/console/` on the `observability-object-storage-webui` Route (the Route root returns an S3 403 — that is expected).
+- **Helm must be ≥ 3.18** — older Helm ignores the null overrides in `chart/charts/openshell/values.yaml` (`upstream.podSecurityContext.fsGroup` / `upstream.securityContext.runAsUser`) because they target a sub-subchart. The gateway then renders with UID/fsGroup 1000, restricted-v2 rejects `openshell-0`, and `helm --wait` hangs on "Installing openshell + workshop". `00-preflight.sh` enforces the minimum.

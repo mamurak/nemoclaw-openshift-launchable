@@ -12,7 +12,7 @@ This Helm chart contains the **production-tested configuration** that successful
 
 - **Size**: `1x.demo` (default; use `1x.small` with 2+ ingester replicas for production)
 - **Ingester Replicas**: `1` (default; scale to 2 for production to prevent ring coordination issues)
-- **Storage**: Shared MinIO instance in `observability-hub` namespace (cross-namespace access from `openshift-logging`)
+- **Storage**: Shared RustFS (S3) instance in `observability-hub` namespace (cross-namespace access from `openshift-logging`)
 - **Schema Version**: `v13` (updated from v12)
 
 ### Authentication & Security
@@ -53,8 +53,8 @@ All prerequisites are automatically installed by the `make install` command:
 
 1. **OpenShift Logging Operator** - Provides log collection infrastructure (auto-installed)
 2. **Loki Operator** - Provides LokiStack CRD (auto-installed)
-3. **Shared MinIO instance** - Object storage backend (auto-installed)
-4. **Sufficient storage** - recommend 100GB+ for MinIO
+3. **Shared RustFS instance** - S3 object storage backend (`deploy/observability/object-storage/`, installed by `scripts/15-observability.sh`)
+4. **Sufficient storage** - recommend 100GB+ for the object storage PVC
 
 **Note**: Collector service account and RBAC are intelligently managed by the Makefile and Helm chart.
 
@@ -92,7 +92,7 @@ make install NAMESPACE=your-namespace
 
 # This automatically installs:
 # - All required operators (Logging + Loki + Tempo + OpenTelemetry + Cluster Observability)
-# - MinIO storage backend with loki bucket
+# - RustFS storage backend with loki bucket
 # - TempoStack for traces
 # - LokiStack for logs
 # - OpenTelemetry Collector
@@ -111,17 +111,17 @@ If you need to install Loki separately:
 make install-logging-operator
 make install-loki-operator
 
-# 2. Install MinIO (if not already installed)
-make install-minio
+# 2. Install RustFS object storage (if not already installed)
+helm upgrade --install object-storage ../object-storage/ -n observability-hub
 
 # 3. Install LokiStack
 make install-loki
 
 # The Helm chart automatically creates:
-# - LokiStack instance with MinIO storage
+# - LokiStack instance with S3 (RustFS) storage
 # - Collector service account and RBAC in openshift-logging namespace
 # - ClusterLogForwarder for log collection
-# - MinIO credentials secret
+# - S3 credentials secret (loki-s3-credentials)
 
 # Wait for LokiStack to be ready
 kubectl wait --for=condition=Ready lokistack/logging-loki -n openshift-logging --timeout=600s
@@ -146,8 +146,8 @@ kubectl get pods -n openshift-logging | grep forwarder
 ### Monitor Storage Usage
 
 ```bash
-# Check MinIO storage usage (should be < 80%)
-kubectl exec -n observability-hub minio-observability-storage-0 -- df -h | grep "/data"
+# Check object storage usage (should be < 80%)
+kubectl exec -n observability-hub deploy/observability-object-storage -- df -h /data
 
 # Monitor ingester status
 kubectl get pods -n openshift-logging | grep ingester
@@ -252,7 +252,7 @@ volumeMounts:
 
 ### Key Metrics to Monitor
 
-1. **Storage Usage**: Keep MinIO below 80% capacity
+1. **Storage Usage**: Keep object storage below 80% capacity
 2. **Ingester Health**: Both ingesters should be `1/1 Running`
 3. **Log Ingestion Rate**: Monitor per-tenant rates
 4. **ClusterLogForwarder Status**: Should be `Ready: True`
@@ -261,7 +261,7 @@ volumeMounts:
 
 ```bash
 # Weekly storage check
-kubectl exec -n observability-hub minio-observability-storage-0 -- df -h
+kubectl exec -n observability-hub deploy/observability-object-storage -- df -h /data
 
 # Check for failed pods
 kubectl get pods -n openshift-logging | grep -v Running
@@ -272,15 +272,15 @@ kubectl get clusterlogforwarder -n openshift-logging -o yaml | grep -A 5 "condit
 
 ## 🚨 Critical Issues Encountered & Solutions
 
-### Issue 1: Storage Crisis - MinIO 99% Full
+### Issue 1: Storage Crisis - Object Storage 99% Full
 
-**Problem**: MinIO storage reached 99% capacity, causing all ingesters to fail with `XMinioStorageFull` errors.
+**Problem**: Object storage reached 99% capacity, causing all ingesters to fail with storage-full errors.
 
 **Root Cause**: Audit logs consumed 93GB in 2 days (96% of total storage).
 
 **Solution**:
 
-1. **Immediate**: Manually deleted audit log directory from MinIO
+1. **Immediate**: Manually deleted audit log directory from the object storage bucket
 2. **Temporary**: Disabled audit log collection
 3. **Long-term**: Reduced retention policies across all tenants
 4. **Result**: Storage usage dropped from 99% to 5%, then stabilized at ~18%
@@ -289,7 +289,7 @@ kubectl get clusterlogforwarder -n openshift-logging -o yaml | grep -A 5 "condit
 
 ```bash
 # Monitor storage regularly
-kubectl exec -n observability-hub minio-observability-storage-0 -- df -h | grep "/data"
+kubectl exec -n observability-hub deploy/observability-object-storage -- df -h /data
 
 # Keep audit logs disabled unless absolutely necessary
 # If enabled, use very short retention (1 day max)
@@ -413,11 +413,11 @@ kubectl delete pod logging-loki-compactor-0 -n openshift-logging
 ### Storage Issues
 
 ```bash
-# Check MinIO usage
-kubectl exec -n observability-hub minio-observability-storage-0 -- df -h
+# Check object storage usage
+kubectl exec -n observability-hub deploy/observability-object-storage -- df -h /data
 
 # If > 80%, check log sizes
-kubectl exec -n observability-hub minio-observability-storage-0 -- du -sh /data/loki/*
+kubectl exec -n observability-hub deploy/observability-object-storage -- du -sh /data/loki
 
 # Emergency: disable audit logs
 kubectl patch clusterlogforwarder logging-loki-forwarder -n openshift-logging --type='merge' -p='{"spec":{"pipelines":[{"name":"application-logs","inputRefs":["application-all-namespaces"],"outputRefs":["loki-application"]},{"name":"infrastructure-logs","inputRefs":["infrastructure-minimal"],"outputRefs":["loki-infrastructure"]}]}}'
@@ -512,7 +512,7 @@ oc get clusterlogforwarder logging-loki-forwarder -n openshift-logging \
 ### Resource Usage
 
 - **LokiStack Size**: 1x.demo is sufficient for workshop use; scale to 1x.small for production
-- **MinIO Storage**: 100GB sufficient for 2+ weeks retention
+- **Object Storage**: 100GB sufficient for 2+ weeks retention
 - **Memory**: Ingesters use ~2GB each under normal load
 - **CPU**: Low usage except during compaction cycles
 
@@ -535,7 +535,7 @@ The complete Loki stack now includes these templates:
 - **`Chart.yaml`** - Helm chart metadata and dependencies
 - **`templates/_helpers.tpl`** - Template helper functions for consistent labeling
 - **`templates/lokistack.yaml`** - LokiStack CRD deployment with multitenant configuration
-- **`templates/minio-secrets.yaml`** - MinIO S3 credentials for storage backend
+- **`templates/s3-secrets.yaml`** - S3 credentials for the RustFS storage backend
 - **`templates/clusterlogforwarder.yaml`** - Log forwarding configuration
 - **`templates/rbac.yaml`** - Core RBAC for log collection service accounts
 - **`templates/collector-rbac.yaml`** - Collector service account and permissions
@@ -580,24 +580,26 @@ helm list -n openshift-logging | grep loki
 ### Uninstallation
 
 ```bash
-# Uninstall only LokiStack (preserves operators and MinIO data)
+# Uninstall only LokiStack (preserves operators and object storage data)
 make uninstall-loki
 
 # Uninstall LokiStack + operators (requires confirmation flag)
 make uninstall NAMESPACE=your-namespace UNINSTALL_OPERATORS=true
 
-# Uninstall everything including MinIO (requires confirmation flag)
+# Uninstall everything including object storage (requires confirmation flag)
 make uninstall NAMESPACE=your-namespace UNINSTALL_OBSERVABILITY=true UNINSTALL_OPERATORS=true
 ```
 
 ### Configuration
 
 ```bash
-# Customize MinIO credentials (before install)
-make install NAMESPACE=your-namespace MINIO_USER=custom-user MINIO_PASSWORD=custom-pass
+# Customize object storage credentials (before install) — keep these in sync with
+# storage.secret.* in ../object-storage/values.yaml
+helm upgrade --install loki . -n openshift-logging \
+  --set s3.accessKeyId=custom-user --set s3.accessKeySecret=custom-pass
 
-# Customize MinIO buckets
-make install NAMESPACE=your-namespace MINIO_BUCKETS=tempo,loki,custom
+# Customize buckets (in ../object-storage/values.yaml)
+#   storage.buckets: ["tempo", "loki", "custom"]
 ```
 
 ### Edge Cases

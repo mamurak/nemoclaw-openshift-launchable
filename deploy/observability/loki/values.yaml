@@ -1,6 +1,6 @@
 # Default values for loki-stack
 # This configuration reflects the production-tested setup that resolved:
-# - MinIO storage crisis (99% -> 69% usage)
+# - Object storage crisis (99% -> 69% usage)
 # - Ingester ring issues (2 replicas for HA)
 # - Namespace filtering for sustainable log volume
 # - Optimized retention policies
@@ -65,22 +65,12 @@ lokiStack:
     compactor:
       replicas: 1
 
-# MinIO storage configuration (reuses existing shared MinIO)
-minio:
-  # Reference to existing shared MinIO service
-  shared:
-    serviceName: minio-observability-storage
-    namespace: observability-hub
-    ports:
-      api: 9000
-      console: 9001
-
-  # S3 configuration for Loki (matches existing Tempo credentials)
-  s3:
-    accessKeyId: "admin"
-    accessKeySecret: "minio123"
-    bucket: loki
-    endpoint: http://minio-observability-storage.observability-hub.svc.cluster.local:9000
+# S3 storage configuration (shared RustFS instance from deploy/observability/object-storage/)
+s3:
+  accessKeyId: "admin"
+  accessKeySecret: "observability123"
+  bucket: loki
+  endpoint: http://observability-object-storage.observability-hub.svc.cluster.local:9000
 
 # UI Plugin configuration for OpenShift Console integration
 uiPlugin:

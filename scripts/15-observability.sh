@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Phase 15 — deploy the OpenShift observability stack.
 # Installs operators (Loki, Tempo, CLO, OTEL, COO), enables User Workload Monitoring,
-# and deploys MinIO + TempoStack + LokiStack + ClusterLogForwarder + OTEL Collector.
+# and deploys RustFS object storage + TempoStack + LokiStack + ClusterLogForwarder + OTEL Collector.
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/common.sh
@@ -44,12 +44,12 @@ done
 log "Enabling User Workload Monitoring"
 "$HERE/lib/enable-uwm.sh"
 
-# --- create namespace for Tempo / OTEL / MinIO ---
+# --- create namespace for Tempo / OTEL / object storage ---
 oc create namespace observability-hub --dry-run=client -o yaml | oc apply -f -
 
-# --- deploy MinIO (object storage for Loki + Tempo) ---
-log "Deploying MinIO"
-helm upgrade --install minio "$REPO_ROOT/deploy/observability/minio/" \
+# --- deploy RustFS (S3 object storage for Loki + Tempo) ---
+log "Deploying RustFS object storage"
+helm upgrade --install object-storage "$REPO_ROOT/deploy/observability/object-storage/" \
   -n observability-hub \
   --wait --timeout 5m
 

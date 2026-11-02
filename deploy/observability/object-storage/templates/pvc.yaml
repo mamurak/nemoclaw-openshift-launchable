@@ -1,0 +1,17 @@
+{{- $namespace := include "object-storage.namespace" . }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "object-storage.fullname" . }}-data
+  namespace: {{ $namespace }}
+  labels:
+    {{- include "object-storage.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  {{- with .Values.storage.persistence.storageClassName }}
+  storageClassName: {{ . | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.storage.persistence.size }}

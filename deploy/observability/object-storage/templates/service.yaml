@@ -1,0 +1,24 @@
+{{/*
+RustFS Service - Deployed to observability-hub namespace
+*/}}
+{{- $namespace := include "object-storage.namespace" . }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "object-storage.fullname" . }}
+  namespace: {{ $namespace }}
+  labels:
+    {{- include "object-storage.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.storage.service.type }}
+  ports:
+    - port: {{ .Values.storage.service.apiPort }}
+      targetPort: api
+      protocol: TCP
+      name: api
+    - port: {{ .Values.storage.service.port }}
+      targetPort: webui
+      protocol: TCP
+      name: webui
+  selector:
+    {{- include "object-storage.selectorLabels" . | nindent 4 }}

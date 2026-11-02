@@ -11,7 +11,7 @@ load_env
 # Auto-detect the cluster's apps domain for Route hostnames.
 DOMAIN="${CLUSTER_APPS_DOMAIN:-$(oc get ingresses.config/cluster -o jsonpath='{.spec.domain}')}"
 
-# Deploy the OpenShift observability stack (operators + MinIO + Tempo + Loki + OTEL).
+# Deploy the OpenShift observability stack (operators + RustFS + Tempo + Loki + OTEL).
 "$HERE/15-observability.sh"
 
 # Create namespaces out-of-band (NOT via Helm — helm uninstall deletes namespaces).

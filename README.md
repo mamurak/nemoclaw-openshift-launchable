@@ -96,7 +96,7 @@ OpenShift cluster
   ├─ observability-hub namespace
   │    ├─ TempoStack (distributed tracing)
   │    ├─ OTEL Collector (trace ingestion)
-  │    └─ MinIO (S3 backend for Loki + Tempo)
+  │    └─ RustFS (S3 backend for Loki + Tempo)
   ├─ monitoring namespace
   │    ├─ Grafana (Route: grafana-monitoring.<domain>/grafana)
   │    └─ Event exporter → Loki
@@ -136,7 +136,7 @@ Most lessons include a live in-browser terminal connected to the cluster for han
 |-------------|---------|-------|
 | Red Hat OpenShift | 4.x | With `cluster-admin` access |
 | `oc` CLI | Matching cluster version | Logged in (`oc login`) |
-| `helm` CLI | 3.x | For chart installation |
+| `helm` CLI | ≥ 3.18 | For chart installation (older versions render the gateway with UID 1000 and it never starts) |
 | `yq`, `jq`, `envsubst` | Any | Used by operator management scripts |
 | Remote inference endpoint | Any | OpenAI-compatible (`/v1/chat/completions`) |
 
@@ -166,7 +166,7 @@ Before deploying, ensure you have:
 
 1. Access to a Red Hat OpenShift 4.x cluster with `cluster-admin` privileges
 2. `oc` CLI installed and logged in to the cluster
-3. `helm` CLI (v3+) installed
+3. `helm` CLI (v3.18+) installed
 4. `yq`, `jq`, and `envsubst` installed (used by operator management scripts)
 5. An OpenAI-compatible inference endpoint (e.g., [NVIDIA NIM](https://build.nvidia.com/), OpenAI, Azure OpenAI, or any `/v1/chat/completions` provider)
 
@@ -196,7 +196,7 @@ NEMOCLAW_API_KEY="nvapi-..."                                        # your API k
 
 The script will:
 - Verify you are logged in to OpenShift and have the required CLI tools
-- Deploy the OpenShift observability stack (5 operators + MinIO + TempoStack + LokiStack + OTEL Collector)
+- Deploy the OpenShift observability stack (5 operators + RustFS + TempoStack + LokiStack + OTEL Collector)
 - Create namespaces (`openshell`, `monitoring`, `demo`) out-of-band
 - Apply the agent-sandbox CRD (pinned to v0.4.6)
 - Add the Grafana Helm repository
@@ -353,7 +353,7 @@ chart/
         └── templates/   # Deployment (+ openclaw-forward sidecar), Service, Routes, RBAC
 ```
 
-The observability backends (TempoStack, LokiStack, OTEL Collector, MinIO) are deployed separately via Helm charts in `deploy/observability/` — not as subcharts — because they target different namespaces (`observability-hub`, `openshift-logging`).
+The observability backends (TempoStack, LokiStack, OTEL Collector, RustFS object storage) are deployed separately via Helm charts in `deploy/observability/` — not as subcharts — because they target different namespaces (`observability-hub`, `openshift-logging`).
 
 The monitoring subchart is deployed as a **separate Helm release** in the `monitoring` namespace so that `{{ .Release.Namespace }}` resolves correctly for all monitoring resources.
 
@@ -382,7 +382,7 @@ The monitoring subchart is deployed as a **separate Helm release** in the `monit
 | Loki Operator + LokiStack | Red Hat Loki Operator (OLM) | Log aggregation (multi-tenant gateway) |
 | Tempo Operator + TempoStack | Red Hat Tempo Operator (OLM) | Distributed tracing |
 | OTEL Collector | Red Hat OpenTelemetry Operator (OLM) | Trace ingestion (OTLP → Tempo) |
-| MinIO | `deploy/observability/minio/` Helm chart | S3-compatible object storage for Loki + Tempo |
+| RustFS | `deploy/observability/object-storage/` Helm chart | S3-compatible object storage for Loki + Tempo; web console at `https://$(oc get route observability-object-storage-webui -n observability-hub -o jsonpath={.spec.host})/rustfs/console/` (login `admin` / `observability123`) |
 | Event exporter | `ghcr.io/resmoio/kubernetes-event-exporter` | Kubernetes events → Loki |
 | ClusterLogForwarder | Red Hat Cluster Logging Operator (OLM) | Pod log collection → Loki |
 | Verdaccio | Built-in | Private npm registry for OpenClaw skills |
