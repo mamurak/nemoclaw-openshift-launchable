@@ -4,7 +4,7 @@ import { Play, Loader2, ListOrdered, CheckCircle2 } from "lucide-react";
 import { streamOrchestrate } from "@/lib/orchestrateStream";
 
 type Step = { agent: string; subtask: string; out?: string };
-type TL = { agent: string; status: "queued" | "running" | "done"; ms?: number };
+type TL = { agent: string; status: "queued" | "running" | "done"; ms?: number; retried?: boolean };
 
 // Part VI capstone widget: type a task, the website orchestrates the fleet — plan (completions)
 // → dispatch each step to a sealed specialist agent (in parallel) → the writer synthesizes.
@@ -28,7 +28,9 @@ export function Orchestrator() {
         else if (e.type === "plan") { setPlan(e.steps || []); setTimeline((e.steps || []).map((s) => ({ agent: s.agent, status: "queued" }))); }
         else if (e.type === "step" && e.status === "start") setTimeline((tl) => tl.map((x) => x.agent === e.agent ? { ...x, status: "running" } : x));
         else if (e.type === "step" && e.status === "done") { acc.push({ agent: e.agent!, subtask: "", out: e.out }); setResults([...acc]); setTimeline((tl) => tl.map((x) => x.agent === e.agent ? { ...x, status: "done", ms: e.ms } : x)); }
-        else if (e.type === "writer") setTimeline((tl) => [...tl, { agent: "writer", status: "running" }]);
+        else if (e.type === "step" && e.status === "retry") setTimeline((tl) => tl.map((x) => x.agent === e.agent ? { ...x, retried: true } : x));
+        else if (e.type === "writer" && e.status === "start") setTimeline((tl) => [...tl, { agent: "writer", status: "running" }]);
+        else if (e.type === "writer" && e.status === "retry") setTimeline((tl) => tl.map((x) => x.agent === "writer" ? { ...x, retried: true } : x));
         else if (e.type === "answer") { setTimeline((tl) => tl.map((x) => x.agent === "writer" ? { ...x, status: "done", ms: e.ms } : x)); setAnswer({ text: e.answer || "", by: e.synthesizedBy }); }
         else if (e.type === "error") setErr(e.error || "failed");
       });
@@ -59,7 +61,7 @@ export function Orchestrator() {
               <div key={x.agent} className="flex items-center gap-2">
                 {x.status === "done" ? <CheckCircle2 size={12} className="text-[var(--color-nv-bright)]" /> : <Loader2 size={12} className="animate-spin text-[var(--color-fg-mut)]" />}
                 <span className="font-semibold">{x.agent === "writer" ? "✍️ writer (synthesize)" : `🦞 ${x.agent}`}</span>
-                <span className="text-[var(--color-fg-mut)]">{x.status === "done" ? `${((x.ms || 0) / 1000).toFixed(1)}s` : x.status}</span>
+                <span className="text-[var(--color-fg-mut)]">{x.status === "done" ? `${((x.ms || 0) / 1000).toFixed(1)}s` : x.status}{x.retried ? " · retried" : ""}</span>
               </div>
             ))}
           </div>

@@ -32,7 +32,7 @@ async function agentInfo(name: string) {
   } catch { /* not found / not ready */ }
   // liveness + persona: read the agent's SOUL.md (the role it was given). A successful read
   // also proves the sandbox is live, so this doubles as the liveness check.
-  const soulPath = "/sandbox/SOUL.md";
+  const soulPath = "/sandbox/.openclaw/workspace/SOUL.md";
   const sr = await openshell(["sandbox", "exec", "-n", name, "--", "cat", soulPath], 8000);
   const soul = sr.code === 0 ? sr.out.split("\n").filter((l) => !/UNDICI|trace-warn/.test(l)).join("\n").trim() : "";
   return { name, role: ROLES[name] ?? name, ready: ready && sr.code === 0, egress, soul, soulPath };

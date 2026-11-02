@@ -5,7 +5,7 @@ import { streamOrchestrate } from "@/lib/orchestrateStream";
 
 type Health = { exists?: boolean; healthy?: boolean; fault?: string; successRps?: number; errorRps?: number; totalRps?: number; errorPct?: number; pods?: string };
 type Invest = { ok?: boolean; results?: { agent: string; out: string }[]; answer?: string; error?: string; synthesizedBy?: string };
-type TL = { agent: string; status: "queued" | "running" | "done"; ms?: number; out?: string; request?: string; started?: number };
+type TL = { agent: string; status: "queued" | "running" | "done"; ms?: number; out?: string; request?: string; started?: number; retried?: boolean };
 const BACKEND: Record<string, string> = { logs: "Loki", metrics: "Prometheus", traces: "Tempo", events: "K8s events", analyst: "(no egress)" };
 const LS_KEY = "incidentlab:v2";
 
@@ -59,7 +59,9 @@ export function IncidentLab() {
         if (e.type === "plan") setTimeline((e.steps || []).map((s) => ({ agent: s.agent, status: "queued", request: s.request })));
         else if (e.type === "step" && e.status === "start") setTimeline((tl) => tl.map((x) => x.agent === e.agent ? { ...x, status: "running", started: Date.now(), request: e.request ?? x.request } : x));
         else if (e.type === "step" && e.status === "done") { results.push({ agent: e.agent!, out: e.out || "" }); setTimeline((tl) => tl.map((x) => x.agent === e.agent ? { ...x, status: "done", ms: e.ms, out: e.out } : x)); }
-        else if (e.type === "writer") setTimeline((tl) => [...tl, { agent: "analyst", status: "running", started: Date.now() }]);
+        else if (e.type === "step" && e.status === "retry") setTimeline((tl) => tl.map((x) => x.agent === e.agent ? { ...x, retried: true } : x));
+        else if (e.type === "writer" && e.status === "start") setTimeline((tl) => [...tl, { agent: "analyst", status: "running", started: Date.now() }]);
+        else if (e.type === "writer" && e.status === "retry") setTimeline((tl) => tl.map((x) => x.agent === "analyst" ? { ...x, retried: true } : x));
         else if (e.type === "answer") {
           setTimeline((tl) => tl.map((x) => x.agent === "analyst" ? { ...x, status: "done", ms: e.ms } : x));
           setInv({ ok: true, results: [...results], answer: e.answer, synthesizedBy: e.synthesizedBy });
@@ -164,7 +166,7 @@ export function IncidentLab() {
                 {x.status === "done" ? <CheckCircle2 size={13} className="text-[var(--color-nv-bright)]" /> : x.status === "running" ? <Loader2 size={13} className="animate-spin text-[var(--color-nv-bright)]" /> : <ChevronRight size={13} className="text-[var(--color-fg-mut)]" />}
                 <span className="font-semibold">{x.agent === "analyst" ? "🧠 analyst" : `🦞 ${x.agent}`}</span>
                 <span className="text-[var(--color-fg-mut)]">· {BACKEND[x.agent] || ""}</span>
-                <span className="ml-auto tabular-nums text-[var(--color-fg-mut)]">{x.status === "running" ? `${x.agent === "analyst" ? "concluding" : "querying"} · ${elapsed(x)}` : elapsed(x)}</span>
+                <span className="ml-auto tabular-nums text-[var(--color-fg-mut)]">{x.status === "running" ? `${x.retried ? "retrying" : x.agent === "analyst" ? "concluding" : "querying"} · ${elapsed(x)}` : `${elapsed(x)}${x.retried ? " · retried" : ""}`}</span>
               </div>
               {x.request && <div className="mt-1 truncate font-mono text-[11px] text-[var(--color-fg-mut)]" title={x.request}>↳ {x.request}</div>}
               {x.agent !== "analyst" && (

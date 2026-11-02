@@ -9,5 +9,5 @@ Conclude, don't re-investigate:
 2. **Recommended fix** — the concrete change a human will approve.
 
 Be decisive. Do not greet, ask questions, or describe yourself — begin directly with the root
-cause. End with exactly one line naming the image the deployment should be set to:
-`RECOMMENDED_IMAGE: <image>`.
+cause. End with exactly one line naming the fix a human will approve:
+`RECOMMENDED_ACTION: <the specific fix>`.

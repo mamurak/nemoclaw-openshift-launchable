@@ -39,23 +39,33 @@ function buildProbes(): Record<string, { url: string; hint: string }> {
   };
 }
 
-// Run `openshell …` with stdin closed so `sandbox exec` gets EOF and exits.
-function openshell(args: string[], timeoutMs = 180_000): Promise<string> {
+// Run `openshell …` with stdin closed so `sandbox exec` gets EOF and exits. Killed on timeout
+// or when `signal` aborts (the client went away), so a closed tab doesn't leave execs running.
+function openshell(args: string[], signal: AbortSignal, timeoutMs = 180_000): Promise<string> {
   return new Promise((resolve) => {
+    if (signal.aborted) return resolve("(aborted)");
     const c = spawn("openshell", args, { env, stdio: ["ignore", "pipe", "pipe"] });
     let out = ""; c.stdout.on("data", (d) => (out += d)); c.stderr.on("data", (d) => (out += d));
-    const t = setTimeout(() => c.kill("SIGTERM"), timeoutMs);
-    c.on("close", () => { clearTimeout(t); resolve(out); });
-    c.on("error", (e) => { clearTimeout(t); resolve(`(dispatch error: ${e.message})`); });
+    const kill = () => c.kill("SIGTERM");
+    const t = setTimeout(kill, timeoutMs);
+    signal.addEventListener("abort", kill, { once: true });
+    const done = (r: string) => { clearTimeout(t); signal.removeEventListener("abort", kill); resolve(r); };
+    c.on("close", () => done(out));
+    c.on("error", (e) => done(`(dispatch error: ${e.message})`));
   });
 }
 
-async function runAgent(agent: string, subtask: string): Promise<string> {
+const MAX_ATTEMPTS = 2;
+// OpenClaw's first-run BOOTSTRAP.md makes a fresh session open with an identity interview
+// ("who am I?", "I just came online…") instead of doing the task — detect it and retry.
+const BOOTSTRAP_RE = /who am i|came online|let['’]s figure out|could you tell me/i;
+
+async function runAgentOnce(agent: string, subtask: string, signal: AbortSignal): Promise<string> {
   // `openshell sandbox exec` rejects args containing newlines, and findings are multi-line —
   // so pass the message base64-encoded and decode it inside the sandbox via the shell.
   const b64 = Buffer.from(subtask, "utf8").toString("base64");
   const out = await openshell(["sandbox", "exec", "-n", agent, "--", "sh", "-c",
-    `NODE_NO_WARNINGS=1 openclaw agent --local --json --session-id ${randomUUID()} -m "$(printf %s ${b64} | base64 -d)"`]);
+    `NODE_NO_WARNINGS=1 openclaw agent --local --json --session-id ${randomUUID()} -m "$(printf %s ${b64} | base64 -d)"`], signal);
   const raw = out.split("\n").filter((l) => !/UNDICI|trace-warn/.test(l)).join("\n");
   // openclaw --json prints a (multi-line) JSON object, e.g. {"payloads":[{"text":"…"}]},
   // amid log lines — pull the JSON blob and extract the agent's text.
@@ -72,20 +82,37 @@ async function runAgent(agent: string, subtask: string): Promise<string> {
   return raw.trim().slice(0, 4000);
 }
 
+// Investigator run: retry a bootstrap greeting. On final failure keep the last output (trimmed)
+// after the marker so the timeline still shows what the agent actually said.
+async function runAgent(agent: string, subtask: string, signal: AbortSignal, onRetry: () => void): Promise<string> {
+  let out = "";
+  for (let attempt = 0; attempt < MAX_ATTEMPTS && !signal.aborted; attempt++) {
+    if (attempt) onRetry();
+    out = await runAgentOnce(agent, subtask, signal);
+    if (out && !BOOTSTRAP_RE.test(out)) return out;
+  }
+  return `(agent did not produce findings)${out ? `\n\n${out.slice(0, 500)}` : ""}`;
+}
+
 // Streams the run as newline-delimited JSON events so the UI shows a LIVE TIMELINE of each
-// agent (start/done + duration) — and the long run never idles the connection out. The
-// investigators run in PARALLEL; the writer agent synthesizes once they're all in.
+// agent (start/retry/done + duration) — and the long run never idles the connection out (each
+// attempt is bounded by openshell's 180s timeout, under the Route's 300s, and a retry emits an
+// event first). The investigators run in PARALLEL; the writer agent synthesizes once they're all in.
 export async function POST(req: Request) {
   const { task } = await req.json().catch(() => ({}));
   if (!task || typeof task !== "string") return NextResponse.json({ ok: false, error: "task required" }, { status: 400 });
   const SYNTH = "analyst";
   const investigators = FLEET.filter((a) => a !== SYNTH);
+  // aborted when the client disconnects — kills in-flight sandbox execs and skips retries
+  const ac = new AbortController();
+  req.signal.addEventListener("abort", () => ac.abort(), { once: true });
+  const signal = ac.signal;
 
   const stream = new ReadableStream({
     async start(controller) {
       const enc = new TextEncoder();
       const t0 = Date.now();
-      const emit = (o: object) => controller.enqueue(enc.encode(JSON.stringify({ t: Date.now() - t0, ...o }) + "\n"));
+      const emit = (o: object) => { if (!signal.aborted) controller.enqueue(enc.encode(JSON.stringify({ t: Date.now() - t0, ...o }) + "\n")); };
       try {
         emit({ type: "plan-start", fleet: FLEET, investigators });
         // Fixed plan: one investigation step per specialist. No host-side model call to plan —
@@ -110,7 +137,7 @@ export async function POST(req: Request) {
         steps.forEach((s) => emit({ type: "step", agent: s.agent, subtask: s.subtask, request: s.request, status: "start" }));
         const results = await Promise.all(steps.map(async (s) => {
           const st = Date.now();
-          const out = await runAgent(s.agent, s.subtask);
+          const out = await runAgent(s.agent, s.subtask, signal, () => emit({ type: "step", agent: s.agent, status: "retry" }));
           emit({ type: "step", agent: s.agent, status: "done", out, ms: Date.now() - st });
           return { ...s, out };
         }));
@@ -124,8 +151,10 @@ export async function POST(req: Request) {
           const analystPrompt = `You are the incident analyst synthesizing an SRE fleet's findings. Reason ONLY over the findings below — do NOT use any tool, read any file, or generate any image, and do NOT greet, ask questions, or describe yourself. Begin your reply directly with "ROOT CAUSE:". In 2-4 sentences give the ROOT CAUSE citing the evidence (error rate, error logs naming the failing dependency, the failing span). CRITICAL: ask "what changed?" — the events findings name a recent change (a dependency scaled to 0, or a recent deploy) that coincides with when the errors began; THAT change is the root cause, and the fix is to REVERSE it specifically. If logs show calls to a dependency failing AND events show that dependency was scaled to 0, the cause is the dependency being down — recommend scaling it back up. Then, on a FINAL separate line, output exactly:\nRECOMMENDED_ACTION: <the specific reversal, e.g. "scale the payments deployment back up to restore the dependency" or "roll back the recent deploy">\n\nIncident: ${task}\n\nFindings:\n${findings}`;
           // the model occasionally emits a non-answer (a greeting / "who am I?"); accept only a
           // real synthesis (must carry the RECOMMENDED_ACTION line) and retry once otherwise.
-          for (let attempt = 0; attempt < 2 && !answer; attempt++) {
-            const w = (await runAgent(SYNTH, analystPrompt)).trim();
+          // The marker check subsumes BOOTSTRAP_RE here, so this calls runAgentOnce directly.
+          for (let attempt = 0; attempt < MAX_ATTEMPTS && !answer && !signal.aborted; attempt++) {
+            if (attempt) emit({ type: "writer", status: "retry" });
+            const w = (await runAgentOnce(SYNTH, analystPrompt, signal)).trim();
             if (w && !/^\(.*(failed|error)/i.test(w) && /RECOMMENDED_ACTION:/i.test(w)) answer = w;
           }
         }
@@ -135,8 +164,9 @@ export async function POST(req: Request) {
       } catch (e) {
         emit({ type: "error", error: e instanceof Error ? e.message : String(e) });
       }
-      controller.close();
+      try { controller.close(); } catch { /* already cancelled by the client */ }
     },
+    cancel() { ac.abort(); },
   });
   return new Response(stream, { headers: { "content-type": "application/x-ndjson", "cache-control": "no-cache" } });
 }

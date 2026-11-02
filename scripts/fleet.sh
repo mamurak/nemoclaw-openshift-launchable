@@ -27,6 +27,7 @@ IMAGE="${OPENCLAW_SANDBOX_IMAGE:-ghcr.io/ansjindal/openclaw-sandbox:2026.6.10}"
 MODEL="${NEMOCLAW_MODEL:-}"; PROVIDER="${NEMOCLAW_INFERENCE_PROVIDER:-default}"
 API="${NEMOCLAW_INFERENCE_API:-openai-completions}"
 ROLES="$REPO/manifests/openclaw/fleet-roles"
+WORKSPACE="/sandbox/.openclaw/workspace"   # OpenClaw's default agent workspace (persona files)
 SKILLDIR="$REPO/manifests/openclaw/skills/cluster-telemetry"   # the in-cluster telemetry skill
 ox() { openshell sandbox exec -n "$1" -- sh -c "$2" </dev/null 2>&1 | grep -viE 'UNDICI|trace-warn' || true; }
 b64() { base64 | tr -d '\n'; }
@@ -101,10 +102,15 @@ up() {
     # Re-apply the policy after sandbox is ready — parallel creation with --policy
     # has a race condition where the gateway may not store the per-sandbox policy.
     openshell policy set "$name" --policy "${POL[$i]}" </dev/null >/dev/null 2>&1 || true
-    # stage the agent's persona (IDENTITY.md / SOUL.md) from fleet-roles/<name> — the role
+    # stage the agent's persona (IDENTITY.md / SOUL.md) from fleet-roles/<name> — the role —
+    # into the OpenClaw workspace, where the agent actually loads it. BOOTSTRAP.md falls back
+    # to the shared fleet-roles/BOOTSTRAP.md: without one, OpenClaw's default first-run
+    # template makes every fresh session open with a "who am I?" interview instead of the task.
     if [[ -d "$ROLES/$name" ]]; then
       for f in IDENTITY.md SOUL.md BOOTSTRAP.md; do
-        [[ -f "$ROLES/$name/$f" ]] && ox "$name" "mkdir -p /sandbox && echo $(b64 < "$ROLES/$name/$f") | base64 -d > /sandbox/$f"
+        src="$ROLES/$name/$f"
+        [[ "$f" == BOOTSTRAP.md && ! -f "$src" ]] && src="$ROLES/BOOTSTRAP.md"
+        [[ -f "$src" ]] && ox "$name" "mkdir -p $WORKSPACE && echo $(b64 < "$src") | base64 -d > $WORKSPACE/$f"
       done
     fi
     # Inject a monitoring auth token for OpenShift backends (Thanos, Loki gateway, Tempo gateway)
